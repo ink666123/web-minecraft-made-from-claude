@@ -117,9 +117,9 @@ if (ANTI_TAMPER) {
     }, 1000);
 }
 const BLOCK = { AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, COBBLESTONE: 4, WOOD: 5, PLANKS: 6, LEAVES: 7, BRICK: 8, SAND: 9, GLASS: 10, BEDROCK: 11, CRAFT: 12, HAY: 13, DOOR: 14, PATH: 15, FARM: 16, LAMP: 17, WATER: 18, CROP: 19, BED: 20 };
-BLOCK.COAL_ORE = 31; BLOCK.DIAMOND_ORE = 33; BLOCK.CHESTB = 34; BLOCK.LAVA = 35; BLOCK.OBS = 39; BLOCK.IRON_ORE = 32; BLOCK.CROP1 = 21; BLOCK.CROP2 = 22; BLOCK.CROP3 = 23; for (let l = 1; l <= 7; l++) BLOCK['FW' + l] = 23 + l;
+BLOCK.COAL_ORE = 31; BLOCK.DIAMOND_ORE = 33; BLOCK.CHESTB = 34; BLOCK.LAVA = 35; BLOCK.OBS = 39; BLOCK.NETHERRACK = 40; BLOCK.SOULSAND = 41; BLOCK.GLOWSTONE = 42; BLOCK.PORTALA = 43; BLOCK.PORTALB = 44; BLOCK.GRAVEL = 45; BLOCK.IRON_ORE = 32; BLOCK.CROP1 = 21; BLOCK.CROP2 = 22; BLOCK.CROP3 = 23; for (let l = 1; l <= 7; l++) BLOCK['FW' + l] = 23 + l;
 const isCrop = b => b === 19 || (b >= 21 && b <= 23), isW = b => b === 18 || (b >= 24 && b <= 30), wLvl = b => b === 18 ? 0 : b - 23;
-const isL = b => b >= 35 && b <= 38, lLvl = b => b === 35 ? 0 : b - 35;
+const isPortal = b => b === 43 || b === 44, isL = b => b >= 35 && b <= 38, lLvl = b => b === 35 ? 0 : b - 35;
 function liqH(b, ab) {   // 液面高度（0~1）：水 8 階、岩漿 4 階，與原版相同的階梯式深淺
     const w = isW(b); if (w ? isW(ab) : isL(ab)) return 1;
     const L = w ? wLvl(b) : lLvl(b);
@@ -138,8 +138,8 @@ function cornerH(gx, y, gz, cx, cz, fn) {   // 液面某個角落的高度：取
 function liqAt(x, y, z, fn) { const bx = Math.floor(x), by = Math.floor(y), bz = Math.floor(z), b = getBlockGlobal(bx, by, bz); return fn(b) && y < by + liqH(b, getBlockGlobal(bx, by + 1, bz)); }
 const waterActive = new Set(), cropSet = new Set();
 function wake(x, y, z) { if (y > 0 && y < 63) waterActive.add(x + ',' + y + ',' + z); }
-const ITEM = { COAL: 133, RABBIT: 107, IRON: 132, BREAD: 106, SEEDS: 131, HOE: 114, EMERALD: 130, PORK: 100, CHICKEN: 101, BEEF: 102, MUTTON: 103, WHEAT: 104, STICK: 105, PICKAXE: 110, AXE: 111, SHOVEL: 112, SWORD: 113, HELMET: 120, CHEST: 121, LEGS: 122, BOOTS: 123, DIAMOND: 134, DHELM: 124, DCHEST: 125, DLEGS: 126, DBOOTS: 127, SHIELD: 128, BUCKET: 135, WBUCKET: 136, LBUCKET: 137 };
-const CHUNK_SIZE = 16, CHUNK_HEIGHT = 64; let RENDER_DISTANCE = 8;   // 顯示距離（區塊數），可用 /rd 2~16 調整
+const ITEM = { COAL: 133, RABBIT: 107, IRON: 132, BREAD: 106, SEEDS: 131, HOE: 114, EMERALD: 130, PORK: 100, CHICKEN: 101, BEEF: 102, MUTTON: 103, WHEAT: 104, STICK: 105, PICKAXE: 110, AXE: 111, SHOVEL: 112, SWORD: 113, HELMET: 120, CHEST: 121, LEGS: 122, BOOTS: 123, DIAMOND: 134, DHELM: 124, DCHEST: 125, DLEGS: 126, DBOOTS: 127, SHIELD: 128, BUCKET: 135, WBUCKET: 136, LBUCKET: 137, FLINT: 138, FLINTSTEEL: 139 };
+const CHUNK_SIZE = 16, CHUNK_HEIGHT = 64; let RENDER_DISTANCE = 8; const NETHER_ZONE = 50000, NETHER_X0 = 100000;   // 地獄：位在 X≥50000 的遠方區域，傳送門以 1:8 換算座標   // 顯示距離（區塊數），可用 /rd 2~16 調整
 
 function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 class PerlinNoise {
@@ -174,7 +174,7 @@ let TOFF = [0, 0], TAMP = 1, MTH = .1, BASE = 24, FRQ = 1, A2 = 4, MAMP = 45, MF
 function setSeed(v) { SEED = v; noiseGen = new PerlinNoise(v); const r = mulberry32((v ^ 0x9e3779b9) >>> 0); TOFF = [r() * 20000 - 10000, r() * 20000 - 10000]; TAMP = .55 + r() * 1.1; MTH = -.05 + r() * .3; BASE = 21 + r() * 9; FRQ = .75 + r() * .6; A2 = 2.5 + r() * 4.5; MAMP = 25 + r() * 50; MFRQ = .7 + r() * .7; villageCache.clear(); }
 
 // ---- 材質圖集 ----
-const ATLAS_SIZE = 6, TILE_RES = 16;
+const ATLAS_SIZE = 8, TILE_RES = 16;
 const textureCanvas = document.createElement('canvas');
 textureCanvas.width = textureCanvas.height = ATLAS_SIZE * TILE_RES;
 const ctx = textureCanvas.getContext('2d');
@@ -200,254 +200,97 @@ const BLOCK_UV = {
     [BLOCK.PATH]: Array(6).fill(UV.PATH), [BLOCK.FARM]: Array(6).fill(UV.FARM), [BLOCK.LAMP]: Array(6).fill(UV.LAMP), [BLOCK.WATER]: Array(6).fill(UV.WATER), [BLOCK.CROP]: Array(6).fill(UV.CROP), [BLOCK.CROP1]: Array(6).fill(UV.CROP1), [BLOCK.CROP2]: Array(6).fill(UV.CROP2), [BLOCK.CROP3]: Array(6).fill(UV.CROP3),
     [BLOCK.BED]: [UV.BEDSIDE, UV.BEDSIDE, UV.BEDTOP, UV.PLANKS, UV.BEDSIDE, UV.BEDSIDE]
 };
-BLOCK_UV[31] = Array(6).fill(UV.COAL); UV.HAY_SIDE = [3, 5]; UV.HAY_TOP = [4, 5]; BLOCK_UV[BLOCK.HAY] = [UV.HAY_SIDE, UV.HAY_SIDE, UV.HAY_TOP, UV.HAY_TOP, UV.HAY_SIDE, UV.HAY_SIDE]; BLOCK_UV[32] = Array(6).fill(UV.IRON); BLOCK_UV[33] = Array(6).fill(UV.DIA); UV.LAVA = [5, 4]; UV.OBS = [1, 4]; for (let i = 35; i <= 38; i++) BLOCK_UV[i] = Array(6).fill(UV.LAVA); BLOCK_UV[39] = Array(6).fill(UV.OBS); BLOCK_UV[34] = [UV.CH_SIDE, UV.CH_SIDE, UV.CH_TOP, UV.CH_TOP, UV.CH_FRONT, UV.CH_SIDE];
+BLOCK_UV[31] = Array(6).fill(UV.COAL); UV.HAY_SIDE = [3, 5]; UV.HAY_TOP = [4, 5]; BLOCK_UV[BLOCK.HAY] = [UV.HAY_SIDE, UV.HAY_SIDE, UV.HAY_TOP, UV.HAY_TOP, UV.HAY_SIDE, UV.HAY_SIDE]; BLOCK_UV[32] = Array(6).fill(UV.IRON); BLOCK_UV[33] = Array(6).fill(UV.DIA); UV.LAVA = [5, 4]; UV.OBS = [1, 4]; for (let i = 35; i <= 38; i++) BLOCK_UV[i] = Array(6).fill(UV.LAVA); BLOCK_UV[39] = Array(6).fill(UV.OBS);
+UV.NR = [6, 0]; UV.SS = [6, 1]; UV.GL = [6, 2]; UV.PT = [6, 3]; UV.GR = [6, 4];
+BLOCK_UV[40] = Array(6).fill(UV.NR); BLOCK_UV[41] = Array(6).fill(UV.SS); BLOCK_UV[42] = Array(6).fill(UV.GL); BLOCK_UV[43] = BLOCK_UV[44] = Array(6).fill(UV.PT); BLOCK_UV[45] = Array(6).fill(UV.GR); BLOCK_UV[34] = [UV.CH_SIDE, UV.CH_SIDE, UV.CH_TOP, UV.CH_TOP, UV.CH_FRONT, UV.CH_SIDE];
 for (let l = 1; l <= 7; l++) BLOCK_UV[23 + l] = Array(6).fill(UV.WATER);
 
-// ---- 材質圖集（程序化像素材質）：可無縫拼接的雜訊 + 離散調色盤 + 邊緣打光 ----
-const hexRGB = h => { if (typeof h === 'number') h = '#' + h.toString(16).padStart(6, '0'); return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; };
-const PAL = (...hs) => hs.map(hexRGB);
-const rnd2 = (i, j, s) => { let h = Math.imul(i + 1, 374761393) ^ Math.imul(j + 1, 668265263) ^ Math.imul(s + 1, 2147483647); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
-function makeVN(seed, period) {   // 以 16px 為週期、可無縫拼接的 value noise
-    const r = mulberry32(seed), L = []; for (let i = 0; i < period * period; i++) L.push(r());
-    const sm = t => t * t * (3 - 2 * t), s = 16 / period, md = a => ((a % period) + period) % period;
-    return (x, y) => {
-        const fx = x / s, fy = y / s, x0 = Math.floor(fx), y0 = Math.floor(fy), tx = sm(fx - x0), ty = sm(fy - y0);
-        const g = (a, b) => L[md(b) * period + md(a)];
-        return (g(x0, y0) * (1 - tx) + g(x0 + 1, y0) * tx) * (1 - ty) + (g(x0, y0 + 1) * (1 - tx) + g(x0 + 1, y0 + 1) * tx) * ty;
-    };
-}
-const tn = seed => { const a = makeVN(seed, 4), b = makeVN(seed + 11, 8), c = makeVN(seed + 23, 16); return (i, j) => a(i + .5, j + .5) * .45 + b(i + .5, j + .5) * .35 + c(i + .5, j + .5) * .2; };
-const pick = (pal, t) => pal[Math.max(0, Math.min(pal.length - 1, Math.floor(t * pal.length)))];
-const shade = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
-function paintTile(tx, ty, fn) {
-    const id = ctx.createImageData(16, 16), d = id.data;
-    for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) {
-        const c = fn(i, j), k = (j * 16 + i) * 4; if (!c) continue;
-        d[k] = c[0]; d[k + 1] = c[1]; d[k + 2] = c[2]; d[k + 3] = c[3] === undefined ? 255 : c[3];
+function drawNoiseTile(x, y, baseColor, noiseColor, density) {
+    ctx.fillStyle = baseColor;
+    ctx.fillRect(x * TILE_RES, y * TILE_RES, TILE_RES, TILE_RES);
+    for (let i = 0; i < TILE_RES; i++) for (let j = 0; j < TILE_RES; j++) {
+        if (Math.random() < density) {
+            ctx.fillStyle = noiseColor;
+            ctx.globalAlpha = Math.random() * 0.5;
+            ctx.fillRect(x * TILE_RES + i, y * TILE_RES + j, 1, 1);
+        }
     }
-    ctx.putImageData(id, tx * 16, ty * 16);
+    ctx.globalAlpha = 1.0;
 }
-function makeVor(pts) {   // 週期性 Voronoi（圓石、燈）
-    return (i, j) => {
-        let d1 = 99, d2 = 99, k = 0, bx = 0, by = 0;
-        pts.forEach((p, n) => { let dx = Math.abs(i + .5 - p[0]), dy = Math.abs(j + .5 - p[1]); if (dx > 8) dx = 16 - dx; if (dy > 8) dy = 16 - dy; const d = Math.hypot(dx, dy); if (d < d1) { d2 = d1; d1 = d; k = n; bx = i + .5 - p[0]; by = j + .5 - p[1]; } else if (d < d2) d2 = d; });
-        return { d1, d2, k, bx, by };
-    };
-}
-
-// 泥土 / 草方塊
-const dirtN = tn(101), DIRT_P = PAL('#5b3b22', '#6b4629', '#7b5232', '#8a603d', '#9a7049');
-const dirtPx = (i, j) => { const r = rnd2(i, j, 2); if (r > .965) return hexRGB('#8c8478'); if (r < .03) return hexRGB('#43281a'); return pick(DIRT_P, dirtN(i, j) * .85 + (rnd2(i, j, 1) - .5) * .5 + .08); };
-paintTile(2, 0, dirtPx);
-const grassN = tn(7), GRASS_P = PAL('#3c7620', '#488a28', '#559c30', '#64ae3a', '#7cc34c');
-const grassPx = (i, j) => { const r = rnd2(i, j, 3); let c = pick(GRASS_P, grassN(i, j) * .85 + (rnd2(i, j, 4) - .5) * .4 + .08); if (r > .93) c = shade(c, .82); else if (r < .05) c = shade(c, 1.12); return c; };
-paintTile(0, 0, grassPx);
-paintTile(1, 0, (i, j) => {
-    const fr = 3 + Math.floor(rnd2(i, 0, 9) * 3) - (rnd2(i + 7, 3, 9) > .8 ? 1 : 0);
-    if (j < fr) return j === fr - 1 ? shade(grassPx(i, j), .85) : grassPx(i, j);
-    const d = dirtPx(i, j); return j === fr ? shade(d, .78) : (j === fr + 1 && rnd2(i, 5, 9) > .5) ? shade(d, .9) : d;
-});
-
-// 石頭 / 圓石
-const stoneN = tn(33), STONE_P = PAL('#666666', '#707070', '#7a7a7a', '#858585', '#919191');
-const stonePx = (i, j) => { const r = rnd2(i, j, 6); let c = pick(STONE_P, stoneN(i, j) * .9 + (rnd2(i, j, 5) - .5) * .32 + .05); if (r > .975) c = hexRGB('#a4a4a4'); else if (r < .035) c = hexRGB('#575757'); return c; };
-paintTile(3, 0, stonePx);
+drawNoiseTile(0, 0, '#5c8e32', '#3e6020', 0.8);
+drawNoiseTile(1, 0, '#866043', '#573d2a', 0.7);
+ctx.fillStyle = '#5c8e32'; ctx.fillRect(1 * TILE_RES, 0, TILE_RES, 4);
+drawNoiseTile(2, 0, '#866043', '#573d2a', 0.6);
+drawNoiseTile(3, 0, '#737373', '#444444', 0.5);
+drawNoiseTile(0, 1, '#555555', '#222222', 0.8);
+drawNoiseTile(1, 1, '#6e502c', '#42301a', 0.6);
+ctx.fillStyle = '#42301a'; for (let i = 0; i < 16; i += 4) ctx.fillRect(1 * TILE_RES + i, 1 * TILE_RES, 2, 16);
+drawNoiseTile(2, 1, '#a07844', '#6e502c', 0.5);
+drawNoiseTile(3, 1, '#b8860b', '#8b5a2b', 0.4);
+ctx.fillStyle = '#5c3a21'; ctx.fillRect(3 * TILE_RES, 1 * TILE_RES + 4, 16, 1); ctx.fillRect(3 * TILE_RES, 1 * TILE_RES + 10, 16, 1);
+drawNoiseTile(0, 2, '#3a8e27', '#1e5013', 0.9);
+ctx.fillStyle = '#9c3a27'; ctx.fillRect(1 * TILE_RES, 2 * TILE_RES, TILE_RES, TILE_RES);
+ctx.fillStyle = '#d1c2b4'; ctx.fillRect(1 * TILE_RES, 2 * TILE_RES + 4, 16, 1); ctx.fillRect(1 * TILE_RES, 2 * TILE_RES + 10, 16, 1);
+ctx.fillRect(1 * TILE_RES + 4, 2 * TILE_RES, 1, 4); ctx.fillRect(1 * TILE_RES + 10, 2 * TILE_RES + 5, 1, 5);
+drawNoiseTile(2, 2, '#e0d29d', '#b8a875', 0.5);
+ctx.fillStyle = 'rgba(200,230,255,0.4)'; ctx.fillRect(3 * TILE_RES, 2 * TILE_RES, TILE_RES, TILE_RES);
+ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(3 * TILE_RES, 2 * TILE_RES, 16, 2); ctx.fillRect(3 * TILE_RES, 2 * TILE_RES, 2, 16);
+ctx.fillRect(3 * TILE_RES, 2 * TILE_RES + 14, 16, 2); ctx.fillRect(3 * TILE_RES + 14, 2 * TILE_RES, 2, 16);
+drawNoiseTile(0, 3, '#222222', '#000000', 0.8);
+drawNoiseTile(1, 3, '#9b7b4a', '#6e5530', 0.6);
+drawNoiseTile(2, 3, '#4a2f1c', '#2a1a0e', 0.5);
+ctx.fillStyle = '#3a2314'; for (let i = 2; i < 16; i += 4) ctx.fillRect(2 * TILE_RES, 3 * TILE_RES + i, 16, 1);
+drawNoiseTile(3, 3, '#f2c14e', '#fff3b0', 0.6);
 {
-    const rr = mulberry32(555), pts = Array.from({ length: 9 }, () => [rr() * 16, rr() * 16, rr()]), CP = PAL('#5a5a5a', '#696969', '#7a7a7a', '#8b8b8b', '#9c9c9c'), vor = makeVor(pts);
-    paintTile(0, 1, (i, j) => {
-        const v = vor(i, j), gap = v.d2 - v.d1; if (gap < 1.15) return hexRGB('#3c3c3c');
-        let c = pick(CP, pts[v.k][2] * .85 + (rnd2(i, j, 8) - .5) * .35 + .07);
-        if (gap < 2.1) c = v.bx + v.by < 0 ? shade(c, 1.14) : shade(c, .88);
-        return c;
-    });
-}
-
-// 木頭：樹皮 / 年輪 / 木板
-{
-    const BP = PAL('#33220f', '#432d16', '#553a1e', '#674a28', '#7a5a32');
-    paintTile(1, 1, (i, j) => {
-        const col = rnd2(i >> 1, 0, 11) * .7 + rnd2(i, 1, 11) * .3; let t = col * .7 + rnd2(i, j >> 1, 12) * .3;
-        if (rnd2(i, j >> 2, 13) > .9) t -= .22; if (i % 4 === 3) t -= .1;
-        let c = pick(BP, t + .08); if ((i === 10 || i === 11) && (j === 6 || j === 7)) c = hexRGB(i === 10 && j === 6 ? '#2a1a0a' : '#3b2712'); return c;
-    });
-    paintTile(2, 1, (i, j) => {
-        const dx = Math.abs(i - 7.5), dy = Math.abs(j - 7.5), mx = Math.max(dx, dy), d = mx * .7 + Math.hypot(dx, dy) * .3, n = rnd2(i, j, 14);
-        if (mx > 6.5) return pick(PAL('#4a3519', '#5b4326', '#6e5230'), n * .8 + .1);
-        let c = hexRGB(Math.floor(d * .95) % 2 ? '#a98a55' : '#bd9d66'); if (d < 1.6) c = hexRGB('#8f6f3c'); if (mx > 5.5) c = hexRGB('#8d6e3f');
-        return shade(c, .94 + n * .1);
-    });
-}
-const PP = PAL('#9a6f3a', '#a87a42', '#b6884d', '#c4965a');
-const plankPx = (i, j) => {
-    const b = j >> 2, jy = j & 3, off = [5, 13, 9, 2][b], base = rnd2(b, 0, 15) * .6 + .1;
-    if (jy === 3) return hexRGB('#5c3d1e'); if (i === off) return hexRGB('#6a4824');
-    return pick(PP, base + (rnd2((i + b * 5) >> 1, jy + b * 4, 16) - .5) * .5 + (jy === 0 ? .12 : 0) + .1);
-};
-paintTile(3, 1, plankPx);
-
-// 樹葉（帶透空）、磚塊、沙子、玻璃、基岩
-{
-    const LP = PAL('#1c5212', '#256318', '#2f7a20', '#3b9029', '#4fa83a'), ln = tn(61);
-    paintTile(0, 2, (i, j) => { if (rnd2(i, j, 17) < .08) return null; let c = pick(LP, ln(i, j) * .85 + (rnd2(i, j, 18) - .5) * .5 + .08); if (rnd2(i, j, 19) > .93) c = shade(c, 1.2); return c; });
-    const BR = PAL('#8a3626', '#98402e', '#a64b36', '#b45740'), MO = PAL('#b9b0a0', '#a89f90', '#c4bcad');
-    paintTile(1, 2, (i, j) => {
-        const r = j >> 2, jy = j & 3, ix = (i + (r % 2 ? 4 : 0)) & 15;
-        if (jy === 3 || (ix & 7) === 7) return pick(MO, rnd2(i, j, 20));
-        let c = pick(BR, rnd2(r * 2 + (ix >> 3), 3, 21) * .8 + (rnd2(i, j, 22) - .5) * .3 + .1); if (jy === 0) c = shade(c, 1.12); if (jy === 2) c = shade(c, .9); return c;
-    });
-    const SP = PAL('#cdbd83', '#d8c98e', '#e2d49b', '#ebdfa9', '#f1e7b7'), sn = tn(71);
-    paintTile(2, 2, (i, j) => { let c = pick(SP, sn(i, j) * .75 + (rnd2(i, j, 23) - .5) * .5 + .1); if (rnd2(i, j, 24) > .965) c = hexRGB('#b5a46c'); return c; });
-    paintTile(3, 2, (i, j) => {
-        if (i === 0 || j === 0 || i === 15 || j === 15) return [214, 238, 250, 230];
-        if (i === 1 || j === 1 || i === 14 || j === 14) return [186, 222, 244, 96];
-        const s = i + j; if ((s === 11 || s === 12) && i > 3 && i < 12 && j > 3 && j < 12) return [255, 255, 255, 150];
-        if ((s === 6 || s === 7) && i > 2 && j > 2 && i < 6 && j < 6) return [255, 255, 255, 120];
-        return [196, 228, 255, 38];
-    });
-    const BG = PAL('#161616', '#222222', '#2e2e2e', '#3d3d3d', '#505050', '#666666'), bn = tn(81);
-    paintTile(0, 3, (i, j) => pick(BG, bn(i, j) * .55 + rnd2(i, j, 25) * .6 - .02));
-}
-
-// 土徑 / 耕地 / 燈
-{
-    const PTH = PAL('#85673a', '#93733f', '#a1804a', '#af8f55', '#bd9f63'), pn = tn(91);
-    paintTile(1, 3, (i, j) => { let c = pick(PTH, pn(i, j) * .8 + (rnd2(i, j, 26) - .5) * .35 + .1); if (j % 8 === 0) c = shade(c, 1.1); if (rnd2(i, j, 27) > .97) c = hexRGB('#7c7568'); return c; });
-    const FP = PAL('#33200f', '#40291a', '#4e3220', '#5c3b26', '#6a4630'), fn2 = tn(121);
-    paintTile(2, 3, (i, j) => { let c = pick(FP, ((j & 3) < 2 ? .62 : .12) + (rnd2(i, j, 28) - .5) * .4 + fn2(i, j) * .25); if ((j & 3) === 0) c = shade(c, 1.1); return c; });
-    const rr = mulberry32(909), pts = Array.from({ length: 8 }, () => [rr() * 16, rr() * 16, rr()]), LAP = PAL('#b66d18', '#d4871f', '#eba234', '#f8c24c', '#ffe27e'), vor = makeVor(pts);
-    paintTile(3, 3, (i, j) => { const v = vor(i, j); if (v.d2 - v.d1 < 1) return hexRGB('#9a5410'); return pick(LAP, pts[v.k][2] * .55 + Math.max(0, 1 - v.d1 / 4.5) * .5 + rnd2(i, j, 29) * .15); });
-}
-
-// 水 / 岩漿：8 格動畫（週期函數，可無縫循環）
-function waterFrame(f) {
-    const t = f / 8 * Math.PI * 2;
-    paintTile(0, 4, (i, j) => {
-        const a = i / 16 * Math.PI * 2, b = j / 16 * Math.PI * 2;
-        let v = Math.sin(a * 2 + t) * .5 + Math.sin(b * 2 - t + a) * .35 + Math.sin(a + b * 3 + t * 2) * .15; v = (v + 1) / 2;
-        const hi = v > .8, lo = v < .2, c = hi ? [128, 176, 255] : lo ? [26, 66, 188] : [38 + v * 30, 92 + v * 40, 214 + v * 22];
-        return [c[0], c[1], c[2], hi ? 196 : lo ? 170 : 158];
-    });
-}
-function lavaFrame(f) {
-    const t = f / 8 * Math.PI * 2, LV = PAL('#6e1a03', '#9c2a05', '#d8480b', '#f27a1a', '#ffb02e', '#ffe27a');
-    paintTile(5, 4, (i, j) => {
-        const a = i / 16 * Math.PI * 2, b = j / 16 * Math.PI * 2;
-        let v = Math.sin(a * 2 + t) * .4 + Math.sin(b * 2 - t) * .35 + Math.sin(a + b + t * 2) * .25 + Math.sin(a * 3 - b * 2 + t) * .2; v = (v + 1) / 2 * .85 + (rnd2(i, j, 40) - .5) * .12;
-        return pick(LV, v);
-    });
-}
-waterFrame(0); lavaFrame(0);
-
-// 黑曜石 / 床 / 合成台
-{
-    const OP = PAL('#090512', '#0f0a1d', '#170f2b', '#21153d'), on = tn(131), vn2 = tn(137);
-    paintTile(1, 4, (i, j) => {
-        let c = pick(OP, on(i, j) * .9 + (rnd2(i, j, 29) - .5) * .3 + .05); const v = Math.abs(vn2(i, j) - .5);
-        if (v < .035) c = hexRGB('#5a2fa0'); else if (v < .06) c = hexRGB('#36206a'); if (rnd2(i, j, 30) > .975) c = hexRGB('#7b52c8'); return c;
-    });
-    const RP = PAL('#8f251e', '#9f2d25', '#ae362c', '#bc4034'), PL = PAL('#cfcfcf', '#dedede', '#ececec', '#f7f7f7');
-    const blanket = (i, j) => pick(RP, rnd2(i, j, 32) * .5 + (((i + j) & 1) ? .3 : .12));
-    paintTile(2, 4, (i, j) => {
-        if (j < 5) { let c = pick(PL, rnd2(i, j, 31) * .6 + .25 + (j === 0 ? .1 : 0)); if (j === 4 || i === 0 || i === 15) c = shade(c, .82); return c; }
-        let c = blanket(i, j); if (j === 5) c = shade(c, .7); if (j === 10) c = shade(c, .78); if (j === 11) c = shade(c, 1.12); return c;
-    });
-    paintTile(3, 4, (i, j) => { if (j < 8) { let c = blanket(i, j); if (j === 7) c = shade(c, .72); if (j === 0) c = shade(c, 1.12); return c; } return shade(plankPx(i, j), .92); });
-    paintTile(4, 4, (i, j) => {
-        if (i === 0 || j === 0 || i === 15 || j === 15) return hexRGB('#4a3018');
-        if (i === 5 || i === 10 || j === 5 || j === 10) return hexRGB('#6a4824');
-        return shade(plankPx(i, j), 1.08);
-    });
-    paintTile(0, 5, (i, j) => j < 3 ? shade(plankPx(i, j), j === 2 ? .55 : .7) : plankPx(i, j));
-    const Y0 = 5 * 16, f = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(x, Y0 + y, w, h); };
-    f('#d0d0d0', 2, 7, 7, 2); f('#8a8a8a', 3, 9, 1, 1); f('#8a8a8a', 5, 9, 1, 1); f('#8a8a8a', 7, 9, 1, 1); f('#5a3a1c', 8, 6, 3, 2);   // 鋸
-    f('#4a4a4a', 10, 10, 4, 3); f('#7a7a7a', 10, 10, 4, 1); f('#6e4a22', 11, 13, 2, 3);   // 錘
-}
-
-// 礦石：石頭底 + 礦脈團塊（亮邊 / 暗邊 / 閃點）
-function oreTile(tx, ty, seed, pal) {
-    const rr = mulberry32(seed), M = Array.from({ length: 16 }, () => Array(16).fill(0));
-    for (let b = 0; b < 6; b++) {
-        const cx = 2 + rr() * 11, cy = 2 + rr() * 11, rx = 1.4 + rr() * 1.4, ry = 1.2 + rr() * 1.2;
-        for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const dx = (x + .5 - cx) / rx, dy = (y + .5 - cy) / ry; if (dx * dx + dy * dy + (rnd2(x, y, seed) - .5) * .5 < 1) M[y][x] = 1; }
-    }
-    const at = (x, y) => x >= 0 && y >= 0 && x < 16 && y < 16 && M[y][x];
-    paintTile(tx, ty, (i, j) => {
-        if (!M[j][i]) return stonePx(i, j);
-        let c = pal[1]; if (!at(i - 1, j) || !at(i, j - 1)) c = pal[2]; else if (!at(i + 1, j) || !at(i, j + 1)) c = pal[0];
-        if (rnd2(i, j, seed + 3) > .86) c = pal[3]; return c;
-    });
-}
-oreTile(1, 5, 301, PAL('#121214', '#2a2a30', '#43434d', '#6d6d7a'));
-oreTile(2, 5, 302, PAL('#a9774e', '#d2a37c', '#e9c6a2', '#fff1de'));
-oreTile(5, 0, 303, PAL('#119694', '#2fd6ce', '#86f6ef', '#e8fffe'));
-
-// 乾草捆 / 箱子
-{
-    const HP = PAL('#b08720', '#c29a2a', '#d3ac36', '#e2be49', '#efd465');
-    paintTile(3, 5, (i, j) => {
-        if (j === 4 || j === 11) return hexRGB('#5e3812'); if (j === 5 || j === 12) return hexRGB('#8c5a26');
-        let c = pick(HP, rnd2((i + j * 3) >> 2, j, 34) * .75 + .15 + (rnd2(i, j, 35) - .5) * .2); if (rnd2(i, j, 36) > .93) c = shade(c, .82); return c;
-    });
-    paintTile(4, 5, (i, j) => { const d = Math.max(Math.abs(i - 7.5), Math.abs(j - 7.5)); if (d > 6.5) return hexRGB('#8c6a14'); let c = pick(HP, rnd2(i, j, 37) * .6 + .25); if (Math.floor(d) % 3 === 0) c = shade(c, .84); return c; });
-    const CP2 = PAL('#7e4f1e', '#8e5c24', '#9e6b2c', '#ae7a36');
-    const chest = (i, j, band) => {
-        if (i === 0 || j === 0 || i === 15 || j === 15) return hexRGB('#3e260d'); if (i === 1 || j === 1 || i === 14 || j === 14) return hexRGB('#b98a45');
-        if (band && (j === 6 || j === 7)) return hexRGB(j === 6 ? '#3e260d' : '#6a4420');
-        return pick(CP2, rnd2(i >> 1, j, 38) * .6 + .2);
-    };
-    paintTile(5, 1, (i, j) => chest(i, j, false)); paintTile(5, 2, (i, j) => chest(i, j, true));
-    paintTile(5, 3, (i, j) => {
-        if (i >= 6 && i <= 9 && j >= 5 && j <= 9) { if (i === 6 || i === 9 || j === 5 || j === 9) return hexRGB('#2e2e2e'); return hexRGB(i === 7 && j === 6 ? '#ffffff' : '#d0d0d0'); }
-        return chest(i, j, true);
-    });
-}
-
-// 小麥作物（四個成長階段）
-for (let s = 0; s < 4; s++) {
-    const M = new Map(), set = (x, y, c) => { if (x >= 0 && x < 16 && y >= 0 && y < 16) M.set(y * 16 + x, c); }, H = [3, 6, 9, 13][s];
-    const G = s < 3 ? PAL('#356e1c', '#4a9026', '#5fae34') : PAL('#a8892a', '#c7a736', '#dcc04e');
+  const T = TILE_RES, P = (tx, ty, x, y, c) => { ctx.fillStyle = c; ctx.fillRect(tx * T + x, ty * T + y, 1, 1); };
+  const greens = ['#4f9a2a', '#63b238', '#3d7d20'], golds = ['#c9a93a', '#dcc04e', '#b08f2a'];
+  for (let stage = 0; stage < 4; stage++) {
+    const H = [3, 6, 9, 13][stage];
     for (let x = 0; x < 16; x += 2) {
-        const h = Math.max(2, H - ((x * 5 + s * 3) % 3));
-        for (let y = 0; y < h; y++) set(x, y, shade(G[(x >> 1) % 3], y < h * .25 ? .78 : y > h * .8 ? 1.12 : 1));
-        if (h > 5 && x % 4 === 0) { set(x + 1, Math.floor(h * .6), G[2]); set(x - 1, Math.floor(h * .4), G[1]); }
-        if (s === 3) { for (let y = h - 4; y < h; y++) set(x + 1, y, hexRGB('#e0c24a')); set(x, h - 1, hexRGB('#f2dc7a')); set(x + 1, h - 2, hexRGB('#a98a2a')); set(x + 1, h - 4, hexRGB('#a98a2a')); }
+      const h = Math.max(2, H - ((x * 5 + stage * 3) % 3)), col = (stage < 3 ? greens : golds)[(x >> 1) % 3];
+      for (let y = 0; y < h; y++) P(4, stage, x, 15 - y, col);
+      if (h > 5 && x % 4 === 0) { P(4, stage, x + 1, 15 - Math.floor(h * .6), col); P(4, stage, x - 1 < 0 ? 0 : x - 1, 15 - Math.floor(h * .4), col); }
+      if (stage === 3) { for (let y = h - 4; y < h; y++) P(4, stage, x + 1, 15 - y, golds[1]); P(4, stage, x, 15 - (h - 1), '#ecd470'); P(4, stage, x + 1, 15 - (h - 2), '#a98a2a'); P(4, stage, x, 15 - (h - 3), '#a98a2a'); }
     }
-    paintTile(4, s, (i, j) => M.get((15 - j) * 16 + i) || null);
+  }
+  UV.WHITE = [5, 5]; ctx.fillStyle = '#ffffff'; ctx.fillRect(5 * T, 5 * T, T, T);
+  // 乾草捆：側面為橫向稻草紋 + 兩條綁繩，頂面為年輪狀稻草
+  for (let i = 0; i < 16; i++) for (let j = 0; j < 16; j++) {
+    const r = Math.random();
+    P(3, 5, i, j, j % 4 === 0 ? '#b88f26' : r < .25 ? '#e8cb55' : r < .5 ? '#d1a933' : '#dcb73c');
+    const d = Math.max(Math.abs(i - 7.5), Math.abs(j - 7.5));
+    P(4, 5, i, j, d > 6.5 ? '#9a7418' : (Math.floor(d) % 3 === 0 ? '#c29a2a' : r < .3 ? '#e6c852' : '#d4ae38'));
+  }
+  for (const y of [4, 11]) for (let i = 0; i < 16; i++) { P(3, 5, i, y, '#7a4a1c'); P(3, 5, i, y + 1, '#a06a2c'); }
 }
-UV.WHITE = [5, 5]; ctx.fillStyle = '#ffffff'; ctx.fillRect(5 * 16, 5 * 16, 16, 16);
+ctx.fillStyle = 'rgba(38,90,215,0.62)'; ctx.fillRect(0, 4 * TILE_RES, TILE_RES, TILE_RES);
+ctx.fillStyle = 'rgba(120,170,255,0.35)'; for (let i = 0; i < 6; i++) ctx.fillRect(Math.random() * 14, 4 * TILE_RES + Math.random() * 14, 3, 1);
+for (let i = 1; i < 16; i += 4) { ctx.fillStyle = '#4f8a2a'; ctx.fillRect(TILE_RES + i, 4 * TILE_RES + 2, 2, 14); ctx.fillStyle = '#d9c04a'; ctx.fillRect(TILE_RES + i, 4 * TILE_RES + 2, 2, 5); ctx.fillStyle = '#5f9a34'; ctx.fillRect(TILE_RES + i + 2, 4 * TILE_RES + 6, 1, 10); }
+drawNoiseTile(2, 4, '#b02e26', '#7a1c17', 0.4); ctx.fillStyle = '#eee'; ctx.fillRect(2 * TILE_RES, 4 * TILE_RES, 16, 5);
+drawNoiseTile(4, 4, '#b8860b', '#8b5a2b', 0.4); ctx.fillStyle = '#5c3a21'; for (const k of [0, 5, 10, 15]) { ctx.fillRect(4 * TILE_RES + k, 4 * TILE_RES, 1, 16); ctx.fillRect(4 * TILE_RES, 4 * TILE_RES + k, 16, 1); }
+drawNoiseTile(0, 5, '#b8860b', '#8b5a2b', 0.4); ctx.fillStyle = '#7a5530'; ctx.fillRect(0, 5 * TILE_RES, 16, 3); ctx.fillStyle = '#d0d0d0'; ctx.fillRect(2, 5 * TILE_RES + 6, 6, 2); ctx.fillStyle = '#555'; ctx.fillRect(10, 5 * TILE_RES + 6, 4, 3); ctx.fillStyle = '#6e4a22'; ctx.fillRect(11, 5 * TILE_RES + 9, 2, 5);
+drawNoiseTile(3, 4, '#b8860b', '#8b5a2b', 0.4); ctx.fillStyle = '#b02e26'; ctx.fillRect(3 * TILE_RES, 4 * TILE_RES, 16, 8);
 
-// ---- 生物 / 玩家 / 護甲用的材質：每種顏色生成 16x16 可重複貼圖，依方塊實際尺寸縮放 UV（每 1 單位 = 16 像素）----
-const _mobTexCache = new Map();
-function mobTex(hex, style) {
-    const key = hex + '|' + style; let t = _mobTexCache.get(key); if (t) return t;
-    const base = hexRGB(hex), cv = document.createElement('canvas'); cv.width = cv.height = 16;
-    const g = cv.getContext('2d'), id = g.createImageData(16, 16), d = id.data, seed = ((hex * 7) ^ (style.length * 131)) & 0xffff, vn = makeVN(seed + 1, 4);
-    for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) {
-        const r = rnd2(i, j, seed), cl = vn(i + .5, j + .5); let k = 1;
-        if (style === 'wool') { k = .84 + cl * .3 + (r - .5) * .1; if (rnd2(i >> 1, j >> 1, seed + 5) > .78) k *= .92; }
-        else if (style === 'fur') { k = .9 + cl * .16 + (r - .5) * .14; if (rnd2(i, j >> 2, seed + 3) > .85) k *= .92; }
-        else if (style === 'feather') { k = .95 + (r - .5) * .08 + ((((j >> 1) + (i >> 1)) & 1) ? .03 : -.02); }
-        else if (style === 'skin') { k = .95 + cl * .08 + (r - .5) * .07; }
-        else if (style === 'hair') { k = .86 + ((i & 1) ? .09 : 0) + (r - .5) * .1 + cl * .1; }
-        else if (style === 'cloth') { k = .93 + ((i & 1) ? .045 : -.04) + (r - .5) * .05 + (((j >> 2) & 1) ? .02 : 0); }
-        else if (style === 'wood') { k = .9 + (((j >> 1) & 1) ? .05 : -.03) + (r - .5) * .08; }
-        else { k = .88 + cl * .12 + (r - .5) * .06; if ((i + j) % 8 === 0) k *= 1.1; if (i === 0 || j === 0) k *= 1.12; if (i === 15 || j === 15) k *= .8; }   // metal：拉絲 + 面板接縫
-        const o = (j * 16 + i) * 4; d[o] = base[0] * k; d[o + 1] = base[1] * k; d[o + 2] = base[2] * k; d[o + 3] = 255;
-    }
-    g.putImageData(id, 0, 0);
-    t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false;
-    _mobTexCache.set(key, t); return t;
-}
-function texGeo(w, h, d) {
-    const geo = new THREE.BoxGeometry(w, h, d), uv = geo.attributes.uv, S = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
-    const ou = Math.floor(Math.random() * 16) / 16, ov = Math.floor(Math.random() * 16) / 16;
-    for (let f = 0; f < 6; f++) for (let v = 0; v < 4; v++) { const k = f * 4 + v; uv.setXY(k, uv.getX(k) * S[f][0] + ou, uv.getY(k) * S[f][1] + ov); }
-    return geo;
-}
-function mkBox(w, h, d, hex, style) {
-    const flat = w * h * d < .0007;   // 眼睛、鼻孔等小零件維持純色，輪廓才清楚
-    return new THREE.Mesh(flat ? new THREE.BoxGeometry(w, h, d) : texGeo(w, h, d), new THREE.MeshLambertMaterial(flat ? { color: hex } : { map: mobTex(hex, style || 'fur') }));
-}
+{ const T = TILE_RES, R = Math.random, px = (tx, ty, i, j, c) => { ctx.fillStyle = c; ctx.fillRect(tx * T + i, ty * T + j, 1, 1); };
+  for (let i = 0; i < 16; i++) for (let j = 0; j < 16; j++) {
+    px(1, 1, i, j, ['#6b5233', '#5f4a2a', '#74593a', '#574226'][(i * 5 + (i >> 2) + (R() < .2 ? 1 : 0)) % 4]);
+    const r = Math.max(Math.abs(i - 7.5), Math.abs(j - 7.5));
+    px(2, 1, i, j, r > 6.5 ? '#5f4a2a' : (r > 2.5 && r < 4.5) ? '#8a6a3a' : '#a88a55');
+    px(0, 2, i, j, ['#2e7d1e', '#3b9128', '#256b18', '#47a331'][Math.floor(R() * 4)]);
+  } }
+const oreTile = (tx, ty, c) => { drawNoiseTile(tx, ty, '#737373', '#444444', 0.5); for (let k = 0; k < 6; k++) { const a = 1 + Math.floor(R2() * 12), b = 1 + Math.floor(R2() * 12); ctx.fillStyle = c; ctx.fillRect(tx * TILE_RES + a, ty * TILE_RES + b, 3, 2); ctx.fillRect(tx * TILE_RES + a + 1, ty * TILE_RES + b - 1, 2, 4); } };
+function R2() { return Math.random(); }
+oreTile(1, 5, '#1c1c1c'); oreTile(2, 5, '#d9a679'); oreTile(5, 0, '#4de8e0'); oreTile(5, 0, '#bffcf8');
+drawNoiseTile(5, 4, '#d8480b', '#ffc23a', .7); ctx.fillStyle = '#8a2a05'; for (let i = 0; i < 14; i++) ctx.fillRect(5 * TILE_RES + Math.floor(Math.random() * 14), 4 * TILE_RES + Math.floor(Math.random() * 14), 3, 2);
+{ const T16 = TILE_RES, R = (a) => Math.floor(Math.random() * a);
+  drawNoiseTile(6, 0, '#7a2d2d', '#a04646', .6); ctx.fillStyle = '#4a1818'; for (let i = 0; i < 14; i++) ctx.fillRect(6 * T16 + R(14), R(14), 2, 1);   // 地獄岩
+  drawNoiseTile(6, 1, '#5a4435', '#7a5f4c', .55); ctx.fillStyle = '#33261c'; for (let i = 0; i < 12; i++) ctx.fillRect(6 * T16 + R(14), T16 + R(14), 2, 2);   // 靈魂沙
+  drawNoiseTile(6, 2, '#ffcb55', '#fff2a8', .7); ctx.fillStyle = '#e8962a'; for (let i = 0; i < 16; i++) ctx.fillRect(6 * T16 + R(15), 2 * T16 + R(15), 2, 1);   // 螢石
+  ctx.clearRect(6 * T16, 3 * T16, T16, T16); ctx.fillStyle = 'rgba(120,40,210,0.55)'; ctx.fillRect(6 * T16, 3 * T16, T16, T16); ctx.fillStyle = 'rgba(205,150,255,0.7)'; for (let i = 0; i < 22; i++) ctx.fillRect(6 * T16 + R(14), 3 * T16 + R(15), 2, 1);   // 傳送門
+  drawNoiseTile(6, 4, '#8b8784', '#b5b1ae', .6); ctx.fillStyle = '#5d5a58'; for (let i = 0; i < 16; i++) ctx.fillRect(6 * T16 + R(14), 4 * T16 + R(14), 2, 2);   // 礫石
+  ctx.globalAlpha = 1; }
+drawNoiseTile(1, 4, '#150d22', '#3a2a5a', .6); ctx.fillStyle = '#5b3a8a'; for (let i = 0; i < 8; i++) ctx.fillRect(TILE_RES + Math.floor(Math.random() * 14), 4 * TILE_RES + Math.floor(Math.random() * 14), 2, 1);
+for (let t = 1; t <= 3; t++) { drawNoiseTile(5, t, '#9a6a2a', '#6e4a1c', .5); ctx.fillStyle = '#4a2f12'; const X = 5 * TILE_RES, Y = t * TILE_RES; ctx.fillRect(X, Y, 16, 1); ctx.fillRect(X, Y + 15, 16, 1); ctx.fillRect(X, Y, 1, 16); ctx.fillRect(X + 15, Y, 1, 16); if (t > 1) ctx.fillRect(X, Y + 5, 16, 1); if (t === 3) { ctx.fillStyle = '#d0d0d0'; ctx.fillRect(X + 7, Y + 4, 2, 4); } }
 
 const atlasTexture = new THREE.CanvasTexture(textureCanvas);
 atlasTexture.magFilter = THREE.NearestFilter;
@@ -457,12 +300,11 @@ atlasTexture.colorSpace = THREE.SRGBColorSpace;
 
 const material = new THREE.MeshLambertMaterial({ map: atlasTexture, vertexColors: true, alphaTest: 0.1 });
 const materialT = new THREE.MeshLambertMaterial({ map: atlasTexture, vertexColors: true, transparent: true, depthWrite: false });
-let _wf = 0; setInterval(() => { _wf = (_wf + 1) % 8; waterFrame(_wf); lavaFrame(_wf); atlasTexture.needsUpdate = true; }, 170);   // 水 / 岩漿流動動畫
 
 const ITEM_PORK = ITEM.PORK, MAX_STACK = 64;
 const NAMES = {[BLOCK.GRASS]:'草方塊',[BLOCK.DIRT]:'泥土',[BLOCK.STONE]:'石頭',[BLOCK.COBBLESTONE]:'圓石',[BLOCK.WOOD]:'原木',[BLOCK.PLANKS]:'木板',[BLOCK.LEAVES]:'樹葉',[BLOCK.BRICK]:'磚塊',[BLOCK.SAND]:'沙子',[BLOCK.GLASS]:'玻璃',[BLOCK.CRAFT]:'合成台',[BLOCK.HAY]:'乾草捆',[ITEM.PORK]:'熟豬肉',[ITEM.CHICKEN]:'熟雞肉',[ITEM.BEEF]:'熟牛肉',[ITEM.MUTTON]:'熟羊肉',[ITEM.WHEAT]:'小麥',[ITEM.EMERALD]:'綠寶石',[ITEM.SEEDS]:'小麥種子',[ITEM.BREAD]:'麵包',[ITEM.IRON]:'鐵錠',[ITEM.RABBIT]:'熟兔肉',[ITEM.HOE]:'石鋤',[BLOCK.BED]:'床',[BLOCK.PATH]:'土徑',[BLOCK.FARM]:'耕地',[BLOCK.LAMP]:'燈',[ITEM.STICK]:'木棒',[ITEM.PICKAXE]:'石鎬',[ITEM.AXE]:'石斧',[ITEM.SHOVEL]:'石鏟',[ITEM.SWORD]:'石劍',[ITEM.HELMET]:'鐵頭盔',[ITEM.CHEST]:'鐵胸甲',[ITEM.LEGS]:'鐵護腿',[ITEM.BOOTS]:'鐵靴子'};
 [['木製','石製','鐵製','鑽石']].forEach(ts => [140, 110, 150, 160].forEach((b, t) => ['鎬','斧','鏟','劍','鋤'].forEach((k, i) => NAMES[b + i] = ts[t] + k)));
-NAMES[31] = '煤炭礦'; NAMES[32] = '鐵礦石'; NAMES[ITEM.COAL] = '煤炭'; Object.assign(NAMES, { 33: '鑽石礦', 34: '箱子', [ITEM.DIAMOND]: '鑽石', [ITEM.DHELM]: '鑽石頭盔', [ITEM.DCHEST]: '鑽石胸甲', [ITEM.DLEGS]: '鑽石護腿', [ITEM.DBOOTS]: '鑽石靴子', [ITEM.SHIELD]: '盾牌', 35: '岩漿', 39: '黑曜石', 135: '桶子', 136: '水桶', 137: '岩漿桶' });
+NAMES[31] = '煤炭礦'; NAMES[32] = '鐵礦石'; NAMES[ITEM.COAL] = '煤炭'; Object.assign(NAMES, { 33: '鑽石礦', 34: '箱子', [ITEM.DIAMOND]: '鑽石', [ITEM.DHELM]: '鑽石頭盔', [ITEM.DCHEST]: '鑽石胸甲', [ITEM.DLEGS]: '鑽石護腿', [ITEM.DBOOTS]: '鑽石靴子', [ITEM.SHIELD]: '盾牌', 35: '岩漿', 39: '黑曜石', 135: '桶子', 136: '水桶', 137: '岩漿桶', 40: '地獄岩', 41: '靈魂沙', 42: '螢石', 45: '礫石', 138: '燧石', 139: '打火石' });
 const slots = Array(36).fill(null);
 const craftGrid = Array(4).fill(null);
 let tableGrid = Array(9).fill(null), tableOpen = false;
@@ -494,13 +336,13 @@ const RECIPES = RECIPES_3;
 const _D = ITEM.DIAMOND;
 RECIPES_3.push({ p: ['III','I I'], k: { I: _D }, out: { id: ITEM.DHELM, n: 1 } }, { p: ['I I','III','III'], k: { I: _D }, out: { id: ITEM.DCHEST, n: 1 } },
     { p: ['III','I I','I I'], k: { I: _D }, out: { id: ITEM.DLEGS, n: 1 } }, { p: ['I I','I I'], k: { I: _D }, out: { id: ITEM.DBOOTS, n: 1 } },
-    { p: ['PIP','PPP',' P '], k: { P: _P, I: _I }, out: { id: ITEM.SHIELD, n: 1 } }, { p: ['PPP','P P','PPP'], k: { P: _P }, out: { id: BLOCK.CHESTB, n: 1 } }, { p: ['I I',' I '], k: { I: _I }, out: { id: ITEM.BUCKET, n: 1 } });
+    { p: ['PIP','PPP',' P '], k: { P: _P, I: _I }, out: { id: ITEM.SHIELD, n: 1 } }, { p: ['PPP','P P','PPP'], k: { P: _P }, out: { id: BLOCK.CHESTB, n: 1 } }, { p: ['I I',' I '], k: { I: _I }, out: { id: ITEM.BUCKET, n: 1 } }, { p: ['I','F'], k: { I: _I, F: ITEM.FLINT }, out: { id: ITEM.FLINTSTEEL, n: 1 } });
 [[_P, 140], [_I, 150], [_D, 160]].forEach(([m, b]) => [['CCC',' S ',' S '], ['CC','CS',' S'], ['C','S','S'], ['C','C','S'], ['CC',' S',' S']].forEach((p, i) => {
     const o = i === 3 ? b + 3 : i === 4 ? b + 4 : b + i; RECIPES_3.push({ p, k: { C: m, S: _S }, out: { id: o, n: 1 } });
 }));
 
 const TOOLS = {}; [[140, 0], [110, 1], [150, 2], [160, 3]].forEach(([b, t]) => ['pick', 'axe', 'shovel', 'sword', 'hoe'].forEach((k, i) => TOOLS[b + i] = { kind: k, tier: t }));
-const NEED_PICK = { 3: 0, 4: 0, 8: 0, 31: 0, 32: 1, 33: 2, 39: 3 };
+const NEED_PICK = { 3: 0, 4: 0, 8: 0, 31: 0, 32: 1, 33: 2, 39: 3, 40: 0 };
 function toolDmg() { const T = TOOLS[slots[currentSlot]?.id]; return T ? (T.kind === 'sword' ? [5, 6, 7, 8] : [4, 5, 6, 7])[T.tier] : 3; }
 function drawTool(g, T) {
     const col = [['#a07844', '#6e502c'], ['#9b9b9b', '#5f5f5f'], ['#ececec', '#a0a0a0'], ['#4de8e0', '#1aa8a8']][T.tier];
@@ -519,25 +361,16 @@ const TOOL_MASKS = {
     sword: [".......BB.......", "......BBBB......", "......BBBB......", "......BBBB......", "......BBBB......", "......BBBB......", "......BBBB......", "......BBBB......", "......BBBB......", "......BBBB......", "...GGGGGGGGGG...", "....GGGGGGGG....", ".......HH.......", ".......HH.......", "......GGGG......", "................"]
 };
 const TIER_COL = ['#a07844', '#8f8f8f', '#dcdcdc', '#4de8e0'], voxGeo = new THREE.BoxGeometry(1, 1, 1), voxMat = new THREE.MeshLambertMaterial();
-const TOOL_RAMP = [['#5e4120', '#a07844', '#c29a5c', '#e0bd80'], ['#4f4f4f', '#8a8a8a', '#b0b0b0', '#d4d4d4'], ['#8c9298', '#d4d6d8', '#f0f0f0', '#ffffff'], ['#0e7f80', '#2fd0c8', '#78f2ea', '#d4fffc']].map(r => r.map(h => new THREE.Color(h)));
-const HANDLE_RAMP = ['#3f2a14', '#6e4824', '#8a5a2e', '#a56f3a'].map(h => new THREE.Color(h));
-// 把像素輪廓擠出成有厚度的立體工具：四階色階（暗/底/亮/閃）+ 邊緣打光 + 木紋 / 礦物斑點
+// 把像素輪廓擠出成有厚度的立體工具：邊緣自動打亮/壓暗，工具頭較厚(3)、握柄(2)、劍身(2)
 function toolModel(id) {
-    const T = TOOLS[id], m = TOOL_MASKS[T.kind], cells = [], rnd = mulberry32(id * 977 + 7), depth = { M: 3, B: 2, H: 2, G: 3 };
+    const T = TOOLS[id], m = TOOL_MASKS[T.kind], cells = [], rnd = mulberry32(id * 977 + 7);
+    const base = { M: TIER_COL[T.tier], B: TIER_COL[T.tier], H: '#7a5230', G: '#5e3d1e' }, depth = { M: 3, B: 2, H: 2, G: 3 };
     const has = (x, y) => y >= 0 && y < 16 && x >= 0 && x < 16 && m[y][x] !== '.';
     let x0 = 99, x1 = -1, y0 = 99, y1 = -1;
     for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
         const ch = m[y][x]; if (ch === '.') continue;
-        const hi = !has(x, y - 1) || !has(x - 1, y), lo = !has(x, y + 1) || !has(x + 1, y); let R, lv;
-        if (ch === 'H') { R = HANDLE_RAMP; lv = hi ? 3 : lo ? 0 : ((x + y) & 1) ? 2 : 1; }
-        else if (ch === 'G') { R = HANDLE_RAMP; lv = hi ? 2 : lo ? 0 : 1; }
-        else {
-            R = TOOL_RAMP[T.tier]; lv = 1;
-            if (ch === 'B') lv = x <= 7 ? 2 : 1;                       // 劍身：左亮右暗，中央起脊
-            if (hi) lv = Math.min(3, lv + 1); else if (lo) lv = Math.max(0, lv - 1);
-            else { const r = rnd(); if ((x + y) % 5 === 0) lv = Math.min(3, lv + 1); else if (T.tier === 1 && r < .22) lv = 0; else if (r < .1) lv = Math.min(3, lv + 1); }
-        }
-        const col = R[lv].clone().multiplyScalar(.96 + .08 * rnd());
+        let k = 1; if (!has(x, y - 1) || !has(x - 1, y)) k *= 1.15; if (!has(x, y + 1) || !has(x + 1, y)) k *= .8; k *= .94 + .12 * rnd();
+        const col = new THREE.Color(base[ch]); col.r = Math.min(1, col.r * k); col.g = Math.min(1, col.g * k); col.b = Math.min(1, col.b * k);
         cells.push([x, y, depth[ch], col]); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
     }
     const c = .8 / Math.max(x1 - x0 + 1, y1 - y0 + 1), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
@@ -574,8 +407,58 @@ function breadModel() {   // 立體麵包：底座、金黃烤面、三道切痕
     g.add(cbox(.4, .03, .02, 0, -.03, .185, '#a96f2c'));
     g.rotation.set(.5, .4, 0); const o = new THREE.Group(); o.add(g); o.scale.setScalar(.95); return o;
 }
-const is3D = id => !!TOOLS[id] || id === ITEM.WHEAT || id === ITEM.SEEDS || id === ITEM.BREAD;
-function customModel(id) { return TOOLS[id] ? toolModel(id) : id === ITEM.WHEAT ? wheatModel() : id === ITEM.SEEDS ? seedsModel() : id === ITEM.BREAD ? breadModel() : null; }
+// ===== 所有物品：可愛風 3D 像素模型（16×16 像素圖 → 有厚度、中間鼓起的體素）=====
+const ITEM_GRIDS = {};
+const _asc = (rows, pal) => rows.map(r => [...r.padEnd(16, '.').slice(0, 16)].map(ch => pal[ch] || null));
+const _rct = (list, pal) => { const g = Array.from({ length: 16 }, () => Array(16).fill(null)); for (const [x, y, w, h, k] of list) for (let j = y; j < y + h && j < 16; j++) for (let i = x; i < x + w && i < 16; i++) g[j][i] = k === '.' ? null : (typeof k === 'number' ? pal[k] : (pal[k] || k)); return g; };
+const _outline = (g, col) => { const o = g.map(r => [...r]); for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) if (!g[j][i] && [[1,0],[-1,0],[0,1],[0,-1]].some(([a, b]) => g[j + b] && g[j + b][i + a])) o[j][i] = col; return o; };
+const ART_STEAK = ["................","................",".....oooooo.....","...ooollllboo...","..olllbbbbbbbo..",".olbbbbwwbbbbdo.",".olbbbwwwwbbbdo.",".obbbbbwwbbbbdo.",".obbbbbbbbbbddo.","..obbbbbbbbddo..","...oodddddddo...",".....oooooo....."];
+const ART_LEG = ["................",".........oooo...",".......oolllmo..","......olmmmmmdo.","......ommmmmmdo.","......ommmmmddo.",".......ommmddo..","......odddooo...",".....owwo.......","....owwo........","...owwoo........","..owwwo.........","..owwo..........","...oo..........."];
+const ART_BUCKET = ["................","................","...oooooooooo...","..ollllllllllo..","..occhhcccccdo..","..occccccccddo..","...olbbbbbbddo..","...olbbbbbbddo..","....olbbbbddo...","....olbbbbddo...","....olbbbbddo...",".....oddddddo...","......oooooo...."];
+const ART_GEM = { 134: ["................","................","....oooooooo....","...ollllcccco...","..olllccccccdo..","..occcllcccddo..","...occlccccddo..","....occccddo....",".....occddo.....","......oddo......",".......oo.......","................"], 130: ["................","......oooo......",".....ollggo.....","....olgggggo....","...olgggggggo...","...olgggggddo...","...ogggggggdo...","...ogggggggdo...","...ogggggdddo...","....ogggdddo....",".....oddddo.....","......oooo......"] };
+const ART_PAL = {
+    133: { o: '#14141a', k: '#2c2c36', g: '#4b4b59', w: '#9a9aac', d: '#1c1c24' },
+    132: { o: '#4b4e57', b: '#cdd1d8', l: '#f6f8fa', d: '#8e939c', s: '#aeb3bb' },
+    134: { o: '#0b4f57', c: '#3fe0d6', l: '#c8fffb', d: '#1fa9a6' }, 130: { o: '#05491f', g: '#17dd62', l: '#9dffc0', d: '#0b8a3a' },
+    100: { o: '#7a2f3c', b: '#ee9aa6', l: '#f9cdd2', d: '#c9606f', w: '#fff0e6' }, 102: { o: '#4d1710', b: '#c4482f', l: '#e8765a', d: '#8a2a1c', w: '#f6dccb' }, 103: { o: '#6b3b30', b: '#d9937f', l: '#efbcad', d: '#a8624f', w: '#fbe9de' },
+    101: { o: '#6b3a1a', m: '#f0b985', l: '#ffdfbd', d: '#cf8651', w: '#fff6e6' }, 107: { o: '#5a3320', m: '#e6a98f', l: '#f8d0bd', d: '#b97a60', w: '#fff1e3' },
+    135: { o: '#4a4d55', b: '#bfc3c9', l: '#eef0f3', d: '#868b93', c: '#3b3d44', h: '#52555d' }, 136: { o: '#4a4d55', b: '#bfc3c9', l: '#eef0f3', d: '#868b93', c: '#3f76e4', h: '#8cb4ff' }, 137: { o: '#4a4d55', b: '#bfc3c9', l: '#eef0f3', d: '#868b93', c: '#ff7a12', h: '#ffd23a' },
+    138: { o: '#2a2a2e', g: '#6f7078', l: '#a9abb5', d: '#4a4a52' }
+};
+function itemGrid(id) {
+    if (id in ITEM_GRIDS) return ITEM_GRIDS[id];
+    let g = null;
+    if (id === ITEM.COAL) g = _asc(["................","................","......oooo......","....oookkkoo....","...okkkgkkkko...","..okkgwgkkkkko..","..okkgkkkkkkko..",".okkkkkkkgkkkko.",".okkkkkkkkkkkko.",".okkkgkkkkkdkko.","..okkkkkkkkdko..","..ookkkkkkdkoo..","...ooodkkdooo...",".....oooooo....."], ART_PAL[133]);
+    else if (id === ITEM.IRON) g = _asc(["................","................","................","...oooooooooo...","..ollllllllllo..",".olllllllllllso.",".ooooooooooosso.",".olbbbbbbbbbdso.",".olbbbbbbbbbddo.",".olbbbbbbbbbddo.",".odddddddddddo..","..oooooooooooo.."], ART_PAL[132]);
+    else if (id === ITEM.DIAMOND || id === ITEM.EMERALD) g = _asc(ART_GEM[id], ART_PAL[id]);
+    else if (id === ITEM.PORK || id === ITEM.BEEF || id === ITEM.MUTTON) g = _asc(ART_STEAK, ART_PAL[id].b ? ART_PAL[id] : ART_PAL[100]);
+    else if (id === ITEM.CHICKEN || id === ITEM.RABBIT) g = _asc(ART_LEG, ART_PAL[id]);
+    else if (id === ITEM.STICK) { g = Array.from({ length: 16 }, () => Array(16).fill(null)); for (let i = 0; i < 12; i++) { g[13 - i][2 + i] = '#a9733a'; g[13 - i][3 + i] = '#8b5a2b'; if (i > 1) g[12 - i][3 + i] = '#c18a4c'; } g = _outline(g, '#3d2710'); }
+    else if (id >= 120 && id <= 127) g = _outline(_rct(ARM_SHAPES[(id - 120) % 4], id >= 124 ? ARM_PAL.dia : ARM_PAL.iron), 'rgba(0,0,0,0)').map(r => r.map(c => c === 'rgba(0,0,0,0)' ? null : c));
+    else if (id === ITEM.SHIELD) g = _rct([[2,2,12,13,'#3a3a3a'],[3,3,10,11,'#555555'],[4,4,8,9,'#8a5a2a'],[4,4,8,2,'#a8743a'],[4,10,8,3,'#6e4620'],[7,4,2,9,'#b02e26'],[4,7,8,2,'#b02e26'],[7,6,2,4,'#d8d8d8'],[7,6,1,2,'#ffffff']], {});
+    else if (id >= 135 && id <= 137) g = _asc(ART_BUCKET, ART_PAL[id]);
+    else if (id === ITEM.FLINT) g = _asc(["................","................",".......ooo......","......oglo......",".....ogllgo.....","....ogglggdo....","....oggggggdo...","...oggggggggdo..","...ogggggggddo..","....ogggggddo...",".....oddddddo...","......oooooo...."], ART_PAL[138]);
+    else if (id === ITEM.FLINTSTEEL) g = _rct([[2,7,8,8,'o'],[3,8,6,6,'b'],[4,9,4,4,'.'],[3,8,6,1,'l'],[3,8,1,6,'l'],[8,8,1,6,'d'],[3,13,6,1,'d'],[8,3,6,6,'q'],[9,4,4,4,'g'],[9,4,2,1,'L'],[12,7,1,1,'t'],[14,2,1,1,'y'],[13,1,1,1,'y'],[15,3,1,1,'y']], { o: '#33363d', b: '#a3a9b2', l: '#dfe3e8', d: '#6d727b', q: '#2a2a2e', g: '#6f7078', L: '#a9abb5', t: '#4a4a52', y: '#ffcc33' });
+    ITEM_GRIDS[id] = g; return g;
+}
+const _pxGeo = new THREE.BoxGeometry(1, 1, 1), _pxMat = new THREE.MeshLambertMaterial();
+function pixelModel(id) {   // 體素：邊緣淺、中心鼓起（深度 2/3/4），頂左打亮、底右壓暗
+    const gr = itemGrid(id), cells = [], rnd = mulberry32(id * 131 + 3), has = (x, y) => y >= 0 && y < 16 && x >= 0 && x < 16 && !!gr[y][x];
+    let x0 = 99, x1 = -1, y0 = 99, y1 = -1;
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+        const hex = gr[y][x]; if (!hex) continue;
+        const miss = [[1,0],[-1,0],[0,1],[0,-1]].filter(([a, b]) => !has(x + a, y + b)).length;
+        let k = 1; if (!has(x, y - 1) || !has(x - 1, y)) k *= 1.12; if (!has(x, y + 1) || !has(x + 1, y)) k *= .86; k *= .96 + .08 * rnd();
+        const c = new THREE.Color(hex); c.setRGB(Math.min(1, c.r * k), Math.min(1, c.g * k), Math.min(1, c.b * k));
+        cells.push([x, y, miss === 0 ? 4 : miss === 1 ? 3 : 2, c]); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+    }
+    const s = .8 / Math.max(x1 - x0 + 1, y1 - y0 + 1), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const im = new THREE.InstancedMesh(_pxGeo, _pxMat, cells.length), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), sc = new THREE.Vector3();
+    cells.forEach(([x, y, d, c], i) => { p.set((x - cx) * s, (cy - y) * s, 0); sc.set(s, s, d * s); m4.compose(p, q, sc); im.setMatrixAt(i, m4); im.setColorAt(i, c); });
+    im.frustumCulled = false; const o = new THREE.Group(); o.add(im); return o;
+}
+const is3D = id => !!TOOLS[id] || id === ITEM.WHEAT || id === ITEM.SEEDS || id === ITEM.BREAD || !!itemGrid(id);
+function customModel(id) { return TOOLS[id] ? toolModel(id) : id === ITEM.WHEAT ? wheatModel() : id === ITEM.SEEDS ? seedsModel() : id === ITEM.BREAD ? breadModel() : itemGrid(id) ? pixelModel(id) : null; }
 let _ir = null, _is, _ic;
 function toolIconURL(id) {   // 以立體模型渲染成物品欄圖示
     if (!_ir) {
@@ -598,87 +481,24 @@ function blockIcon(id) {
     face(uv[2], [.875, .4375, -.875, .4375, 16, 2], [[16,2],[30,9],[16,16],[2,9]], 0);
     return c;
 }
-// ---- 物品圖示（程序化像素畫：色階 + 自動描邊）----
-const newCells = () => Array.from({ length: 16 }, () => Array(16).fill(null));
-function flushCells(g, cells, line) {
-    const at = (x, y) => x >= 0 && y >= 0 && x < 16 && y < 16 && cells[y][x], edge = [];
-    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (!cells[y][x] && (at(x - 1, y) || at(x + 1, y) || at(x, y - 1) || at(x, y + 1))) edge.push([x, y]);
-    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (cells[y][x]) { g.fillStyle = cells[y][x]; g.fillRect(x, y, 1, 1); }
-    g.fillStyle = line; edge.forEach(([x, y]) => g.fillRect(x, y, 1, 1));
-}
-function blobCells(cells, cx, cy, rx, ry, rot, pal, seed) {   // 橢圓團塊：左上受光、右下背光、邊緣壓暗
-    const c = Math.cos(rot), s = Math.sin(rot), r = mulberry32(seed);
-    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
-        const dx = x + .5 - cx, dy = y + .5 - cy, u = (dx * c + dy * s) / rx, v = (-dx * s + dy * c) / ry, rr = u * u + v * v + (r() - .5) * .18;
-        if (rr > 1) continue;
-        const lit = (-dx * .6 - dy * .8) / Math.max(rx, ry); let lv = lit > .3 ? 2 : lit < -.3 ? 0 : 1;
-        if (rr > .72) lv = Math.max(0, lv - 1); if (lit > .55 && rr < .5) lv = 3;
-        cells[y][x] = pal[lv];
-    }
-}
-function coalIcon(g) {
-    const cells = newCells(); blobCells(cells, 8, 8.5, 5.6, 4.8, .3, ['#0e0e10', '#25252a', '#3c3c44', '#6a6a78'], 77);
-    flushCells(g, cells, '#050506');
-}
-function gemIcon(g, kind) {
-    const E = kind === 'emerald', pal = E ? ['#0a6a30', '#13b955', '#3ee37f', '#b8ffd4'] : ['#127c7a', '#2fd0c8', '#7af2ea', '#e0fffd'], cells = newCells();
-    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
-        const dx = Math.abs(x - 7.5), dy = Math.abs(y - 7.5); let inside, lv = 1;
-        if (E) {
-            inside = dx <= 4.5 && dy <= 5.5 && dx + dy <= 8.2; if (!inside) continue;
-            if (dx <= 2 && dy <= 3) lv = x < 7.5 ? 2 : 1; else lv = (x < 7.5 && y < 7.5) || (x < 7.5 && dy < 3) || (y < 7.5 && dx < 2) ? 2 : (x > 7.5 && y > 7.5) ? 0 : 1;
-        } else {
-            inside = y >= 3 && y <= 13 && dx <= (y <= 6 ? 3.5 + (y - 3) * .9 : 6.2 - (y - 6) * .75); if (!inside) continue;
-            lv = y <= 5 ? (dx < 2 ? 3 : x < 7.5 ? 2 : 1) : (dx < 1.2 ? 2 : x < 7.5 ? 1 : 0);
-        }
-        cells[y][x] = pal[lv];
-    }
-    for (const [x, y] of [[5, 4], [6, 4], [5, 5]]) if (cells[y][x]) cells[y][x] = pal[3];
-    flushCells(g, cells, E ? '#053d1c' : '#0a4a4a');
-}
-function ingotIcon(g) {
-    const cells = newCells(), top = '#f0f1f3', fr = '#c4c7cb', frD = '#9a9ea3', sd = '#8a8e94', sdD = '#6f7378';
-    for (let y = 5; y <= 7; y++) for (let x = 6 - (y - 5); x <= 13 - (y - 5); x++) cells[y][x] = top;
-    for (let x = 4; x <= 7; x++) cells[7][x] = '#ffffff';
-    for (let y = 8; y <= 11; y++) for (let x = 3; x <= 10; x++) cells[y][x] = y === 11 ? frD : y === 8 ? '#d6d8db' : fr;
-    for (let x = 11; x <= 13; x++) for (let y = 8 - (x - 11); y <= 11 - (x - 11); y++) cells[y][x] = y === 11 - (x - 11) ? sdD : sd;
-    flushCells(g, cells, '#3a3d42');
-}
-function stickIcon(g) {
-    const cells = newCells();
-    for (let t = 0; t < 10; t++) { const x = 3 + t, y = 12 - t; cells[y][x] = t > 7 ? '#c8925a' : '#b27c42'; cells[y][x + 1] = '#7a5028'; }
-    cells[8][7] = '#8f5f30'; cells[7][9] = '#8f5f30';
-    flushCells(g, cells, '#3a2410');
-}
-function meatIcon(g, id) {
-    const cells = newCells(), BONE = '#efeadb', BONE_D = '#cfc8b2', bone = pts => pts.forEach(([x, y, d]) => { if (x >= 0 && y >= 0 && x < 16 && y < 16) cells[y][x] = d ? BONE_D : BONE; });
-    const leg = () => { bone([[6, 9], [5, 10], [4, 11], [3, 12], [7, 9, 1], [6, 10, 1], [5, 11, 1], [4, 12, 1], [2, 12], [2, 13], [1, 13, 1], [3, 13, 1]]); };
-    if (id === ITEM.PORK) { blobCells(cells, 8, 8.5, 6, 4.4, -.5, ['#8a4a2a', '#c0764a', '#dc9a6a', '#f0bc90'], 11); bone([[11, 10], [12, 10], [11, 11], [12, 11, 1], [13, 11, 1], [12, 12, 1]]); }
-    else if (id === ITEM.CHICKEN) { blobCells(cells, 9.5, 6.5, 5, 4, .7, ['#7a4413', '#b87326', '#d9953a', '#f0b85a'], 12); leg(); }
-    else if (id === ITEM.BEEF) { blobCells(cells, 8, 8.5, 6.4, 4.8, -.3, ['#4a2012', '#7a3a20', '#a45a34', '#c47e4c'], 13); for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (cells[y][x] && (x + y) % 5 === 0 && cells[y][x] !== '#c47e4c') cells[y][x] = '#33180d'; }
-    else if (id === ITEM.MUTTON) { blobCells(cells, 9, 7.5, 5.2, 4.3, .6, ['#5e2616', '#8c4228', '#b0603a', '#cf8458'], 14); leg(); }
-    else if (id === ITEM.RABBIT) { blobCells(cells, 6.5, 8.5, 3.8, 3.2, .2, ['#7d4a22', '#b0723a', '#cc925a', '#e6b27c'], 15); blobCells(cells, 10.5, 7, 3.4, 3, -.4, ['#7d4a22', '#b0723a', '#cc925a', '#e6b27c'], 16); bone([[9, 11], [10, 12], [11, 13, 1], [12, 13]]); }
-    else blobCells(cells, 8, 8, 5.5, 4.5, 0, ['#777777', '#aaaaaa', '#cccccc', '#eeeeee'], 17);
-    flushCells(g, cells, '#26120a');
-}
 const iconCanvasCache = new Map(), iconUrlCache = new Map();
 function iconCanvas(id) {
     if (iconCanvasCache.has(id)) return iconCanvasCache.get(id);
     const c = document.createElement('canvas'); c.width = c.height = 16;
     const g = c.getContext('2d');
+    const gr = itemGrid(id); if (gr) { gr.forEach((row, j) => row.forEach((col, i) => { if (col) { g.fillStyle = col; g.fillRect(i, j, 1, 1); } })); iconCanvasCache.set(id, c); return c; }
     if (TOOLS[id]) drawTool(g, TOOLS[id]);
-    else if (id === ITEM.COAL) coalIcon(g);
-    else if (id === ITEM.EMERALD) gemIcon(g, 'emerald');
+    else if (id === ITEM.COAL) { g.fillStyle = '#222'; g.fillRect(4,5,8,7); g.fillRect(3,7,10,3); g.fillStyle = '#555'; g.fillRect(5,6,3,2); }
+    else if (id === ITEM.EMERALD) { g.fillStyle='#0b7a3a'; g.fillRect(5,2,6,12); g.fillRect(3,4,10,8); g.fillStyle='#17dd62'; g.fillRect(6,3,4,10); g.fillRect(4,5,8,6); g.fillStyle='#9dffc0'; g.fillRect(6,4,2,3); }
     else if (id === ITEM.BREAD) { g.fillStyle='#7a4a1c'; g.fillRect(3,5,10,1); g.fillRect(2,6,12,6); g.fillRect(3,12,10,1); g.fillStyle='#d9a14a'; g.fillRect(3,6,10,5); g.fillStyle='#efc272'; g.fillRect(4,6,8,1); g.fillStyle='#b87a30'; g.fillRect(3,10,10,1); g.fillStyle='#a86a28'; for (const x of [5,8,11]) g.fillRect(x,7,1,2); }
     else if (id === ITEM.WHEAT) { const P=(c,l)=>{g.fillStyle=c;l.forEach(p=>g.fillRect(p[0],p[1],1,1));}; const L=a=>Array.from({length:9},(_,i)=>[a+i,13-i]);
         P('#a8872a',L(2)); P('#d4b53f',L(3)); P('#b8962c',L(4)); P('#ecd472',[[10,2],[11,2],[11,3],[12,3],[12,4],[13,4],[9,3],[10,4],[11,5],[8,4]]); P('#9a7b22',[[10,3],[12,5],[11,4],[9,4],[13,3]]); P('#7a4a1c',[[5,10],[6,10],[7,10],[5,11],[6,11]]); }
-    else if (id === ITEM.IRON) ingotIcon(g);
+    else if (id === ITEM.IRON) { g.fillStyle='#bdbdbd'; g.fillRect(3,6,10,5); g.fillStyle='#eee'; g.fillRect(4,6,8,2); g.fillStyle='#777'; g.fillRect(3,10,10,1); }
     else if (id === ITEM.SEEDS) { for (const [x,y] of [[3,9],[8,5],[6,11],[10,9],[5,4],[11,3],[12,7],[2,5]]) { g.fillStyle='#7aa23a'; g.fillRect(x,y,2,1); g.fillStyle='#3d5a1c'; g.fillRect(x,y+1,2,1); g.fillStyle='#b4d466'; g.fillRect(x,y,1,1); } }
     else if (id === ITEM.HOE) { g.fillStyle='#6e502c'; for (let i=0;i<12;i++) g.fillRect(2+i,13-i,2,2); g.fillStyle='#888'; g.fillRect(8,2,6,2); g.fillRect(12,2,2,5); }
-    else if (FOOD[id]) meatIcon(g, id);
-    else if (id === ITEM.STICK) stickIcon(g);
+    else if (FOOD[id]) { const colors={100:'#e8909a',101:'#f2dfb0',102:'#9b633f',103:'#d8a6a0',104:'#d6c34c'}; g.fillStyle=colors[id]||'#ddd'; g.fillRect(3,4,10,8); g.fillStyle='#fff'; g.fillRect(4,5,3,2); }
+    else if (id === ITEM.STICK) { g.fillStyle='#8b5a2b'; g.fillRect(7,1,3,14); }
     else if (id >= ITEM.PICKAXE && id <= ITEM.SWORD) { g.fillStyle='#777'; g.fillRect(7,2,3,9); g.fillStyle='#8b5a2b'; g.fillRect(7,10,3,5); }
-    else if (id === ITEM.DIAMOND) gemIcon(g, 'diamond');
     else if (id === ITEM.DIAMOND || (id >= 120 && id <= 128) || (id >= 135 && id <= 137)) extraIcon(g, id);
     else if (id >= ITEM.HELMET && id <= ITEM.BOOTS) { g.fillStyle='#aaa'; g.fillRect(3,4,10,8); g.fillStyle='#666'; g.fillRect(5,2,6,3); }
     else { const uv = BLOCK_UV[id] ? BLOCK_UV[id][2] : UV.PLANKS; g.drawImage(textureCanvas, uv[0] * TILE_RES, uv[1] * TILE_RES, 16, 16, 0, 0, 16, 16); }
@@ -979,7 +799,7 @@ const shieldHand = new THREE.Group(); shieldHand.add(cbox(.5, .7, .05, 0, 0, 0, 
 let handId = -1, handModel = null, handSwing = 0;
 function setHand(id) {
     handId = id; if (handModel) handPivot.remove(handModel);
-    if (id == null) { handModel = mkBox(.22, .22, .8, 0xc58a55, 'skin'); handModel.position.set(.55, -.45, -.8); handModel.rotation.set(.35, -.25, 0); }
+    if (id == null) { handModel = new THREE.Mesh(new THREE.BoxGeometry(.22, .22, .8), new THREE.MeshLambertMaterial({ color: 0xc58a55 })); handModel.position.set(.55, -.45, -.8); handModel.rotation.set(.35, -.25, 0); }
     else if (BLOCK_UV[id]) { handModel = itemModel(id); handModel.scale.setScalar(.36); handModel.position.set(.55, -.42, -.9); handModel.rotation.set(.15, .7, 0); }
     else if (is3D(id)) { handModel = itemModel(id); handModel.scale.setScalar(1.05); handModel.position.set(.5, -.3, -.9); handModel.rotation.set(.15, .45, .1); }
     else { handModel = itemModel(id); handModel.scale.setScalar(.8); handModel.position.set(.5, -.3, -.85); handModel.rotation.set(.1, -.5, .12); }
@@ -1051,7 +871,7 @@ function updateDrops(dt) {
 // ---- 生存模式 ----
 const HARDNESS = {[BLOCK.CRAFT]:2,[BLOCK.HAY]:1,[BLOCK.DOOR]:2,[BLOCK.GRASS]:.6,[BLOCK.DIRT]:.6,[BLOCK.SAND]:.5,[BLOCK.LEAVES]:.3,[BLOCK.WOOD]:2,[BLOCK.PLANKS]:1.5,[BLOCK.COBBLESTONE]:3,[BLOCK.STONE]:3.5,[BLOCK.BRICK]:3,[BLOCK.GLASS]:.4,[BLOCK.BEDROCK]:Infinity,[BLOCK.WATER]:Infinity,[BLOCK.CROP]:.1,[21]:.1,[22]:.1,[23]:.1,[24]:Infinity,[25]:Infinity,[26]:Infinity,[27]:Infinity,[28]:Infinity,[29]:Infinity,[30]:Infinity,[BLOCK.BED]:.4,[BLOCK.PATH]:.6,[BLOCK.FARM]:.6,[BLOCK.LAMP]:.3};
 const DROPS = {[BLOCK.CRAFT]:BLOCK.CRAFT,[BLOCK.HAY]:ITEM.WHEAT,[BLOCK.GRASS]:BLOCK.DIRT,[BLOCK.STONE]:BLOCK.COBBLESTONE,[BLOCK.GLASS]:BLOCK.AIR,[BLOCK.CROP]:ITEM.WHEAT,[BLOCK.PATH]:BLOCK.DIRT,[BLOCK.FARM]:BLOCK.DIRT};
-HARDNESS[31] = 3; HARDNESS[32] = 3.5; DROPS[31] = ITEM.COAL; DROPS[32] = ITEM.IRON; HARDNESS[33] = 4; HARDNESS[39] = 10; for (let i = 35; i <= 38; i++) HARDNESS[i] = Infinity; HARDNESS[34] = 2.5; DROPS[33] = ITEM.DIAMOND;
+HARDNESS[31] = 3; HARDNESS[32] = 3.5; DROPS[31] = ITEM.COAL; DROPS[32] = ITEM.IRON; HARDNESS[33] = 4; HARDNESS[39] = 10; HARDNESS[40] = 1; HARDNESS[41] = .8; HARDNESS[42] = .5; HARDNESS[45] = .6; HARDNESS[43] = HARDNESS[44] = Infinity; for (let i = 35; i <= 38; i++) HARDNESS[i] = Infinity; HARDNESS[34] = 2.5; DROPS[33] = ITEM.DIAMOND;
 let hp = 20, hunger = 20, lastHurt = 0, regenT = 0, hungerT = 0;
 const heartsEl = document.getElementById('hearts'), hungerEl = document.getElementById('hunger'), hurtEl = document.getElementById('hurt');
 function drawHearts() {
@@ -1164,7 +984,7 @@ function villageAt(rx, rz) {
     }
     villageCache.set(k, v); return v;
 }
-function villageFor(cx, cz) { return villageAt(Math.floor((cx * CHUNK_SIZE + 8 + VREG / 2) / VREG), Math.floor((cz * CHUNK_SIZE + 8 + VREG / 2) / VREG)); }
+function villageFor(cx, cz) { if (cx * CHUNK_SIZE >= NETHER_ZONE) return null; return villageAt(Math.floor((cx * CHUNK_SIZE + 8 + VREG / 2) / VREG), Math.floor((cz * CHUNK_SIZE + 8 + VREG / 2) / VREG)); }
 // ---- 立體農作物：每格 9 株獨立麥桿（莖、葉、麥穗皆為實體方塊）----
 function cropBox(O, X, Y, Z, w, h, d, c, dk) {
     const t = UV.WHITE, u = (t[0] + .5) / ATLAS_SIZE, v = 1 - (t[1] + .5) / ATLAS_SIZE, x1 = X + w, y1 = Y + h, z1 = Z + d;
@@ -1214,8 +1034,31 @@ class Chunk {
             if (type !== BLOCK.AIR && y > this.maxY) this.maxY = y;
         }
     }
+    genNether(rnd) {   // 地獄：地獄岩洞窟、底部岩漿海、頂底基岩、靈魂沙、天花板螢石
+        const N = noiseGen, ox = this.cx * CHUNK_SIZE, oz = this.cz * CHUNK_SIZE;
+        for (let x = 0; x < CHUNK_SIZE; x++) for (let z = 0; z < CHUNK_SIZE; z++) {
+            const wx = ox + x, wz = oz + z;
+            for (let y = 0; y < CHUNK_HEIGHT; y++) {
+                let b;
+                if (y === 0 || y === 63 || (y <= 2 && rnd() < .5) || (y >= 61 && rnd() < .5)) b = BLOCK.BEDROCK;
+                else {
+                    const d = N.noise(wx * .02 + TOFF[0] * .3, y * .05, wz * .02 + TOFF[1] * .3) + .35 * N.noise(wx * .07, y * .1, wz * .07);
+                    const thr = .08 + (y > 50 ? (y - 50) * .09 : 0) + (y < 14 ? (14 - y) * .09 : 0);
+                    b = (y >= 4 && y <= 12 && N.noise2D(wx * .02 + 77, wz * .02) > -.05) ? BLOCK.LAVA : d > thr ? BLOCK.AIR : BLOCK.NETHERRACK;   // 底層大片岩漿海
+                }
+                this.setBlock(x, y, z, b);
+            }
+            for (let y = 13; y < 60; y++) {
+                if (this.getBlock(x, y, z) !== BLOCK.NETHERRACK) continue;
+                const up = this.getBlock(x, y + 1, z), dn = this.getBlock(x, y - 1, z);
+                if (up === BLOCK.AIR && N.noise2D(wx * .08 + 40, wz * .08) > .12) this.setBlock(x, y, z, BLOCK.SOULSAND);
+                else if (dn === BLOCK.AIR && y > 34 && N.noise(wx * .22, y * .22, wz * .22) > .3) this.setBlock(x, y, z, BLOCK.GLOWSTONE);
+            }
+        }
+    }
     generateTerrain() {
         const rnd = mulberry32((SEED ^ Math.imul(this.cx, 73856093) ^ Math.imul(this.cz, 19349663)) >>> 0);
+        if (this.cx * CHUNK_SIZE >= NETHER_ZONE) { this.genNether(rnd); return; }
         const ox = this.cx * CHUNK_SIZE, oz = this.cz * CHUNK_SIZE, trees = [], N = noiseGen, V = villageFor(this.cx, this.cz), GYv = V ? V.gy : GY;
         for (let x = 0; x < CHUNK_SIZE; x++) for (let z = 0; z < CHUNK_SIZE; z++) {
             const wx = ox + x, wz = oz + z, biome = biomeAt(wx, wz);
@@ -1246,6 +1089,7 @@ class Chunk {
         const tri = (c, r) => Math.max(2, Math.floor(c + (rnd() - rnd()) * r));   // 新版礦物：三角分佈，鑽石集中在最底層
         const ore2 = (id, n, len, fy) => { for (let k = 0; k < n; k++) { let x = Math.floor(rnd() * 16), y = fy(), z = Math.floor(rnd() * 16); for (let s = 0; s < len; s++) { if (this.getBlock(x, y, z) === BLOCK.STONE) this.setBlock(x, y, z, id); x += Math.floor(rnd() * 3) - 1; y += Math.floor(rnd() * 3) - 1; z += Math.floor(rnd() * 3) - 1; } } };
         ore2(BLOCK.COAL_ORE, 20, 8, () => tri(40, 24)); ore2(BLOCK.IRON_ORE, 14, 6, () => tri(16, 20));
+        ore2(BLOCK.GRAVEL, 8, 20, () => tri(32, 22));
         ore2(BLOCK.DIAMOND_ORE, 5, 4, () => 1 + Math.floor(rnd() * rnd() * 14)); if (rnd() < .11) ore2(BLOCK.DIAMOND_ORE, 1, 10, () => 3 + Math.floor(rnd() * 9));
         // Minecraft 橡樹：4~6 格樹幹，下兩層 5x5（缺角），上兩層 3x3（頂層十字）
         for (const [x, z, h] of trees) {
@@ -1262,7 +1106,7 @@ class Chunk {
     dispose() {
         this.removed = true;
         for (const m of [this.mesh, this.meshT]) if (m) { scene.remove(m); m.geometry.dispose(); }
-        this.mesh = this.meshT = null;
+        this.mesh = this.meshT = null; this.mapCv = null; this.mapBuilt = false;   // 一併釋放小地圖快取
     }
     buildMesh() {
         if (this.removed) return;
@@ -1272,13 +1116,22 @@ class Chunk {
         const O = mk(), T = mk();
         const ox = this.cx * CHUNK_SIZE, oz = this.cz * CHUNK_SIZE, eps = 0.001;
         const yMax = Math.min(this.maxY + 1, CHUNK_HEIGHT - 1);
-        const AOT = [.5, .68, .84, 1];   // 頂點環境光遮蔽：0~3 級
-        const occ = (px, py, pz) => { const b = (px >= 0 && px < CHUNK_SIZE && pz >= 0 && pz < CHUNK_SIZE) ? this.getBlock(px, py, pz) : getBlockGlobal(ox + px, py, oz + pz); return b !== 0 && !isW(b) && !isL(b) && !isCrop(b) && b !== BLOCK.GLASS ? 1 : 0; };
 
         for (let x = 0; x < CHUNK_SIZE; x++) for (let y = 0; y <= yMax; y++) for (let z = 0; z < CHUNK_SIZE; z++) {
             const block = this.data[this.getIndex(x, y, z)];
             if (block === BLOCK.AIR) continue;
             if (isCrop(block)) { addCrop(O, block, x, y, z, ox + x, y, oz + z, Math.min(1, .4 + y / 24)); continue; }
+            if (isPortal(block)) {   // 傳送門：雙面薄平面，紫色半透明
+                const pt = BLOCK_UV[block][0], pu0 = pt[0] / ATLAS_SIZE + eps, pu1 = (pt[0] + 1) / ATLAS_SIZE - eps, pv0 = 1 - (pt[1] + 1) / ATLAS_SIZE + eps, pv1 = 1 - pt[1] / ATLAS_SIZE - eps;
+                const A = block === BLOCK.PORTALA, quad = A ? [[0,0,.5],[1,0,.5],[1,1,.5],[0,1,.5]] : [[.5,0,0],[.5,0,1],[.5,1,1],[.5,1,0]];
+                for (const side of [1, -1]) {
+                    const b0 = T.p.length / 3, vs = side === 1 ? quad : [...quad].reverse();
+                    for (const v of vs) { T.p.push(x + v[0], y + v[1], z + v[2]); T.n.push(A ? 0 : side, 0, A ? side : 0); T.c.push(1.5, 1.5, 1.5); }
+                    if (side === 1) T.u.push(pu0, pv0, pu1, pv0, pu1, pv1, pu0, pv1); else T.u.push(pu0, pv1, pu1, pv1, pu1, pv0, pu0, pv0);
+                    T.i.push(b0, b0 + 1, b0 + 2, b0, b0 + 2, b0 + 3);
+                }
+                continue;
+            }
             const g = (block === BLOCK.GLASS || isW(block)) ? T : O;
             const liq = isW(block) || isL(block), same = n => isW(block) ? isW(n) : isL(n);
             const hm = liq ? liqH(block, y + 1 < CHUNK_HEIGHT ? this.getBlock(x, y + 1, z) : BLOCK.AIR) : 1;
@@ -1294,25 +1147,17 @@ class Chunk {
 
                 const base = g.p.length / 3;
                 const light = face[1] === -1 ? 0.5 : (face[0] !== 0 || face[2] !== 0) ? 0.75 : 1.0; const dk = (isL(block) ? 2.4 : Math.min(1, .4 + y / 24)) * (isW(block) ? .8 + .2 * hm : 1);
-                let ao = null;
-                if (!liq && block !== BLOCK.LAMP && block !== BLOCK.GLASS) {
-                    const ax = face[0] !== 0 ? 0 : face[1] !== 0 ? 1 : 2, t1 = ax === 0 ? 1 : 0, t2 = ax === 2 ? 1 : 2, A = [];
-                    for (let a1 = -1; a1 <= 1; a1++) for (let a2 = -1; a2 <= 1; a2++) { if (!a1 && !a2) { A.push(0); continue; } const q = [nx, ny, nz]; q[t1] += a1; q[t2] += a2; A.push(occ(q[0], q[1], q[2])); }
-                    ao = [0, 0, 0, 0];
-                    for (let v = 0; v < 4; v++) { const s1 = face[3][v][t1] ? 2 : 0, s2 = face[3][v][t2] ? 2 : 0, e1 = A[s1 * 3 + 1], e2 = A[3 + s2], cr = A[s1 * 3 + s2]; ao[v] = e1 && e2 ? 0 : 3 - (e1 + e2 + cr); }
-                }
                 for (let v = 0; v < 4; v++) {
                     let vy = face[3][v][1]; if (liq && f !== 3 && (f === 2 || vy === 1)) vy = CH ? CH[face[3][v][0] + 2 * face[3][v][2]] : hm;
                     g.p.push(x + face[3][v][0], y + vy, z + face[3][v][2]);
                     g.n.push(face[0], face[1], face[2]);
-                    { const sh = light * dk * (ao ? AOT[ao[v]] : 1); g.c.push(sh, sh, sh); }
+                    g.c.push(light * dk, light * dk, light * dk);
                 }
                 const t = BLOCK_UV[block][face[4]];
                 const u0 = t[0] / ATLAS_SIZE + eps, u1 = (t[0] + 1) / ATLAS_SIZE - eps;
                 const v0 = 1 - (t[1] + 1) / ATLAS_SIZE + eps, v1 = 1 - t[1] / ATLAS_SIZE - eps;
                 g.u.push(u0, v0, u1, v0, u1, v1, u0, v1);
-                if (ao && ao[1] + ao[3] > ao[0] + ao[2]) g.i.push(base + 1, base + 2, base + 3, base + 1, base + 3, base);
-                else g.i.push(base, base + 1, base + 2, base, base + 2, base + 3);
+                g.i.push(base, base + 1, base + 2, base, base + 2, base + 3);
             }
         }
 
@@ -1451,7 +1296,7 @@ function checkCollision(pos) {
     const minY = Math.floor(pos.y), maxY = Math.floor(pos.y + player.box.height);
     const minZ = Math.floor(pos.z - player.box.depth / 2), maxZ = Math.floor(pos.z + player.box.depth / 2);
     for (let x = minX; x <= maxX; x++) for (let y = minY; y <= maxY; y++) for (let z = minZ; z <= maxZ; z++) {
-        { const b = getBlockGlobal(x, y, z); if (b !== BLOCK.AIR && !isW(b) && !isL(b) && !isCrop(b)) return true; }
+        { const b = getBlockGlobal(x, y, z); if (b !== BLOCK.AIR && !isW(b) && !isL(b) && !isPortal(b) && !isCrop(b)) return true; }
     }
     return false;
 }
@@ -1459,7 +1304,7 @@ function checkCollision(pos) {
 let lavaT = 0; const _move = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0), _wp = new THREE.Vector3();
 const _start = new THREE.Vector3(), _dir = new THREE.Vector3();
 
-function hasGround(p) { for (const dx of [-.3, .3]) for (const dz of [-.3, .3]) { const b = getBlockGlobal(Math.floor(p.x + dx), Math.floor(p.y - .1), Math.floor(p.z + dz)); if (b !== BLOCK.AIR && !isW(b) && !isL(b) && !isCrop(b)) return true; } return false; }
+function hasGround(p) { for (const dx of [-.3, .3]) for (const dz of [-.3, .3]) { const b = getBlockGlobal(Math.floor(p.x + dx), Math.floor(p.y - .1), Math.floor(p.z + dz)); if (b !== BLOCK.AIR && !isW(b) && !isL(b) && !isPortal(b) && !isCrop(b)) return true; } return false; }
 function updatePhysics(dt) {
     _move.set(0, 0, 0);
     if (keys['KeyW']) _move.z -= 1;
@@ -1538,11 +1383,11 @@ function chunkLoaded(x, z) { return chunks.has(getChunkKey(Math.floor(x / CHUNK_
 const PASSIVE = ['pig','chicken','cow','sheep','rabbit','horse','wolf'], SPAWN_TYPES = ['pig','pig','chicken','chicken','cow','cow','sheep','sheep','rabbit','rabbit','horse','wolf'];
 function makeMob(type, x, y, z, prof, nid) {
     const g = new THREE.Group(), mats = [];
-    const sty = c => type === 'sheep' ? ((c === 0xf3f1ec || c === 0xe9e6df) ? 'wool' : 'fur') : type === 'chicken' ? 'feather' : type === 'villager' ? ((c === 0xb98c6a || c === 0xa57a5a) ? 'skin' : 'cloth') : type === 'zombie' ? ((c === 0x5a9f4a || c === 0x3f7a35 || c === 0x2f5a28) ? 'skin' : 'cloth') : 'fur';
     const part = (w, h, d, px, py, pz, c) => {
-        const b = mkBox(w, h, d, c, sty(c)); mats.push(b.material); b.position.set(px, py, pz); g.add(b);
+        const mt = new THREE.MeshLambertMaterial({ color: c }); mats.push(mt);
+        const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mt); b.position.set(px, py, pz); g.add(b);
     };
-    const legs = [], P = (w, h, d, x, y, z, c, par) => { const b = mkBox(w, h, d, c, sty(c)); mats.push(b.material); b.position.set(x, y, z); (par || g).add(b); return b; };
+    const legs = [], P = (w, h, d, x, y, z, c, par) => { const mt = new THREE.MeshLambertMaterial({ color: c }); mats.push(mt); const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mt); b.position.set(x, y, z); (par || g).add(b); return b; };
     const L = (w, h, d, x, y, z, c, ph, hoof) => { const p = new THREE.Group(); p.position.set(x, y + h / 2, z); g.add(p); P(w, h, d, 0, -h / 2, 0, c, p); if (hoof) P(w + .01, .1, d + .01, 0, -h + .05, 0, hoof, p); legs.push({ p, ph }); return p; };
     const E = (x, y, z, s) => P(s || .07, s || .07, .02, x, y, z, 0x111111), D = (sx, sz) => sx * sz > 0 ? 0 : Math.PI;
     if (type === 'pig') {
@@ -1592,6 +1437,14 @@ function makeMob(type, x, y, z, prof, nid) {
         if (pi === 0 || pi === 4) { P(.95, .05, .95, 0, 2.05, 0, 0xd9bf5e); P(.52, .14, .52, 0, 2.12, 0, 0xd9bf5e); }
         else if (pi === 1 || pi === 5) P(.5, .75, .03, 0, .95, .22, 0xf0f0f0); else if (pi === 3) { P(.5, .75, .03, 0, .95, .22, 0x2e2e2e); P(.54, .12, .54, 0, 2.06, 0, 0x2e2e2e); }
         for (const sx of [-.14, .14]) L(.2, .35, .2, sx, .175, 0, 0x4a3a28, sx < 0 ? 0 : Math.PI);
+    } else if (type === 'pigman') {   // 殭屍豬人：粉紅豬臉、綠灰衣服、金劍
+        const pk = 0xe29090, dk = 0xc46a72, gd = 0xf2c230;
+        P(.5, .7, .26, 0, 1.05, 0, 0x6f8a4a); P(.54, .14, .28, 0, .76, 0, 0x4a5e30); P(.56, .5, .5, 0, 1.62, 0, pk); P(.24, .18, .12, 0, 1.55, .31, dk); P(.05, .06, .02, -.05, 1.55, .375, 0x5a2a30); P(.05, .06, .02, .05, 1.55, .375, 0x5a2a30);
+        P(.1, .08, .02, -.14, 1.68, .26, 0xffffff); P(.05, .08, .02, -.14, 1.68, .27, 0x7a1010); P(.1, .08, .02, .14, 1.68, .26, 0xffffff); P(.05, .08, .02, .14, 1.68, .27, 0x7a1010);
+        P(.14, .22, .06, -.35, 1.74, 0, pk); P(.14, .22, .06, .35, 1.74, 0, pk); P(.58, .1, .52, 0, 1.9, 0, 0x8a4a58);
+        for (const sx of [-.375, .375]) { const a = new THREE.Group(); a.position.set(sx, 1.35, 0); a.rotation.x = -1.2; g.add(a); P(.22, .7, .22, 0, -.35, 0, pk, a); P(.24, .3, .24, 0, -.12, 0, 0x6f8a4a, a); }
+        P(.08, .55, .08, .38, 1.0, .5, gd); P(.2, .06, .1, .38, .75, .5, 0xb8901a);
+        for (const sx of [-.13, .13]) L(.25, .7, .25, sx, .35, 0, 0x4a5e30, sx < 0 ? 0 : Math.PI);
     } else {
         const sk = 0x5a9f4a;
         P(.5, .7, .25, 0, 1.05, 0, 0x2aa8a8); P(.52, .14, .27, 0, .78, 0, 0x2a8a8a); P(.5, .5, .5, 0, 1.6, 0, sk); P(.1, .08, .02, -.12, 1.62, .26, 0x111111); P(.1, .08, .02, .12, 1.62, .26, 0x111111); P(.16, .05, .02, 0, 1.47, .26, 0x2f5a28); P(.5, .06, .52, 0, 1.87, 0, 0x3f7a35);
@@ -1620,7 +1473,7 @@ function boxHit(p, w, h) {
     const x0 = Math.floor(p.x - w / 2), x1 = Math.floor(p.x + w / 2), z0 = Math.floor(p.z - w / 2), z1 = Math.floor(p.z + w / 2);
     const y0 = Math.floor(p.y), y1 = Math.floor(p.y + h);
     for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++)
-        { const b = getBlockGlobal(x, y, z); if (b !== BLOCK.AIR && !isW(b) && !isL(b) && !isCrop(b)) return true; }
+        { const b = getBlockGlobal(x, y, z); if (b !== BLOCK.AIR && !isW(b) && !isL(b) && !isPortal(b) && !isCrop(b)) return true; }
     return false;
 }
 function spawnVillagers(V) {
@@ -1635,7 +1488,17 @@ function spawnVillagers(V) {
         }
     });
 }
+function spawnNetherMob(c) {
+    if (mobs.filter(m => m.type === 'pigman').length >= 4 + 3 * remotes.size) return;
+    const a = Math.random() * 6.283, d = 12 + Math.random() * 14, x = Math.floor(c.x + Math.sin(a) * d), z = Math.floor(c.z + Math.cos(a) * d);
+    if (!chunkLoaded(x, z)) return;
+    for (let y = 14 + Math.floor(Math.random() * 36); y > 13; y--) {
+        const b = getBlockGlobal(x, y, z);
+        if ((b === BLOCK.NETHERRACK || b === BLOCK.SOULSAND) && getBlockGlobal(x, y + 1, z) === BLOCK.AIR && getBlockGlobal(x, y + 2, z) === BLOCK.AIR) { makeMob('pigman', x + .5, y + 1, z + .5); return; }
+    }
+}
 function trySpawn() {
+    { const cs = [player.pos, ...[...remotes.values()].map(r => r.target)], c0 = cs[Math.floor(Math.random() * cs.length)]; if (c0.x >= NETHER_ZONE) { spawnNetherMob(c0); return; } }
     const passive = mobs.filter(m => PASSIVE.includes(m.type)).length, zs = mobs.filter(m=>m.type==='zombie').length;
     const types=SPAWN_TYPES, zcap = isNight ? 6 + 3 * remotes.size : 0;
     const type = passive < 14 + 6 * remotes.size && (zs >= zcap || Math.random() < 0.7) ? types[Math.floor(Math.random()*types.length)] : zs < zcap ? 'zombie' : null;
@@ -1654,7 +1517,11 @@ function trySpawn() {
 let tod = 0.2, isNight = false;
 function toast(msg) { let d = document.getElementById('toast'); if (!d) { d = document.createElement('div'); d.id = 'toast'; d.style.cssText = 'position:absolute;top:25%;left:50%;transform:translateX(-50%);color:#fff;font-size:28px;text-shadow:2px 2px 0 #000;z-index:30;pointer-events:none;transition:opacity .5s'; document.body.appendChild(d); } d.textContent = msg; d.style.opacity = 1; clearTimeout(d.t); d.t = setTimeout(() => d.style.opacity = 0, 2000); }
 const _dayC = new THREE.Color(0x78a7ff), _nightC = new THREE.Color(0x070b1c);
+let wasNether = false;
 function updateTime(dt) {
+    const nth = player.pos.x >= NETHER_ZONE;
+    if (nth !== wasNether) { wasNether = nth; scene.fog.near = nth ? 6 : (RENDER_DISTANCE - 1.5) * CHUNK_SIZE; scene.fog.far = nth ? 85 : RENDER_DISTANCE * CHUNK_SIZE; ambLight.color.setHex(nth ? 0xffb8a8 : 0xffffff); }
+    if (nth) { tod = (tod + dt / 480) % 1; scene.background.setHex(0x2b0808); scene.fog.color.copy(scene.background); dirLight.intensity = .2; ambLight.intensity = .85; return; }
     tod = (tod + dt / 480) % 1; const sun = Math.sin(tod * 6.2832);
     isNight = sun < -0.1; const k = Math.min(1, Math.max(0, (0.2 - sun) / 0.5));
     scene.background.copy(_dayC).lerp(_nightC, k); scene.fog.color.copy(scene.background);
@@ -1721,7 +1588,7 @@ const LIQ = {
     l: { is: isL, lv: lLvl, id: L => L === 0 ? 35 : 35 + L, max: 3, slope: 2 }    // 岩漿(主世界)：流 3 格，找洞口範圍 2 格
 };
 const isHoleB = (b, K) => b === BLOCK.AIR || K.is(b);   // 洞口：空氣或同種液體（水柱正在往下流）
-const isSolidB = b => b !== BLOCK.AIR && !isW(b) && !isL(b) && !isCrop(b);
+const isSolidB = b => b !== BLOCK.AIR && !isW(b) && !isL(b) && !isPortal(b) && !isCrop(b);
 function slopeDist(x, y, z, step, from, K) {   // 往哪個方向最快能掉下去（原版 getSlopeDistance）
     let best = 1000;
     for (let i = 0; i < 4; i++) {
@@ -1765,12 +1632,73 @@ function lavaCell(x, y, z, b) {
     for (const [a, c, d] of [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]) if (isW(getBlockGlobal(x + a, y + c, z + d))) { setBlockGlobal(x, y, z, L === 0 ? BLOCK.OBS : BLOCK.COBBLESTONE, true); return; }   // 水+岩漿 = 黑曜石/圓石
     liqCell(x, y, z, b, LIQ.l);
 }
+function tryLightPortal(px, py, pz) {   // 打火石：在黑曜石框內點燃傳送門（內部至少 2 寬 × 3 高）
+    for (const ax of [0, 1]) {
+        const d = ax === 0 ? [1, 0] : [0, 1], at = (u, v) => getBlockGlobal(px + d[0] * u, py + v, pz + d[1] * u), air = b => b === BLOCK.AIR;
+        if (!air(at(0, 0))) continue;
+        let v0 = 0; while (air(at(0, v0 - 1)) && v0 > -22) v0--; if (at(0, v0 - 1) !== BLOCK.OBS) continue;
+        let u0 = 0; while (air(at(u0 - 1, v0)) && u0 > -22) u0--; if (at(u0 - 1, v0) !== BLOCK.OBS) continue;
+        let u1 = 0; while (air(at(u1 + 1, v0)) && u1 < 22) u1++; if (at(u1 + 1, v0) !== BLOCK.OBS) continue;
+        let v1 = v0; while (air(at(0, v1 + 1)) && v1 < v0 + 22) v1++; if (at(0, v1 + 1) !== BLOCK.OBS) continue;
+        if (u1 - u0 + 1 < 2 || v1 - v0 + 1 < 3) continue;
+        let ok = true;
+        for (let u = u0; u <= u1 && ok; u++) { for (let v = v0; v <= v1; v++) if (!air(at(u, v))) { ok = false; break; } if (at(u, v0 - 1) !== BLOCK.OBS || at(u, v1 + 1) !== BLOCK.OBS) ok = false; }
+        for (let v = v0; v <= v1 && ok; v++) if (at(u0 - 1, v) !== BLOCK.OBS || at(u1 + 1, v) !== BLOCK.OBS) ok = false;
+        if (!ok) continue;
+        for (let u = u0; u <= u1; u++) for (let v = v0; v <= v1; v++) setBlockGlobal(px + d[0] * u, py + v, pz + d[1] * u, ax === 0 ? BLOCK.PORTALA : BLOCK.PORTALB);
+        return true;
+    }
+    return false;
+}
+function useFlintSteel() { const h = liquidRay(); if (h && tryLightPortal(h.px, h.py, h.pz)) toast('傳送門已開啟'); }
+function breakPortalAround(x, y, z) {   // 黑曜石框被拆掉：相連的傳送門一起消失
+    const q = []; for (const [a, b, c] of [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]) if (isPortal(getBlockGlobal(x + a, y + b, z + c))) q.push([x + a, y + b, z + c]);
+    let n = 0; while (q.length && n++ < 600) {
+        const [px, py, pz] = q.pop(); if (!isPortal(getBlockGlobal(px, py, pz))) continue; setBlockGlobal(px, py, pz, BLOCK.AIR);
+        for (const [a, b, c] of [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]) if (isPortal(getBlockGlobal(px + a, py + b, pz + c))) q.push([px + a, py + b, pz + c]);
+    }
+}
+let portalT = 0, portalCool = false;
+const portalFx = document.createElement('div'); portalFx.style.cssText = 'position:fixed;inset:0;background:radial-gradient(circle,rgba(150,70,230,.35),rgba(90,20,170,.75));opacity:0;pointer-events:none;z-index:14;transition:opacity .15s'; document.body.appendChild(portalFx);
+function portalTick(dt) {
+    const bx = Math.floor(player.pos.x), bz = Math.floor(player.pos.z), inP = isPortal(getBlockGlobal(bx, Math.floor(player.pos.y + .3), bz)) || isPortal(getBlockGlobal(bx, Math.floor(player.pos.y + 1.2), bz));
+    if (!inP) { portalCool = false; portalT = Math.max(0, portalT - dt * 2); }
+    else if (!portalCool) { portalT += dt; if (portalT >= 1.8) { portalT = 0; usePortal(); } }
+    portalFx.style.opacity = Math.min(.9, portalT / 1.8 * .9);
+}
+function findPortalNear(tx, tz, r) {
+    let best = null, bd = 1e9;
+    for (let x = tx - r; x <= tx + r; x++) for (let z = tz - r; z <= tz + r; z++) {
+        if (!chunkLoaded(x, z)) continue; const dd = (x - tx) ** 2 + (z - tz) ** 2; if (dd >= bd) continue;
+        for (let y = 1; y < 62; y++) if (isPortal(getBlockGlobal(x, y, z))) { let yy = y; while (isPortal(getBlockGlobal(x, yy - 1, z))) yy--; best = [x, yy, z]; bd = dd; break; }
+    }
+    return best;
+}
+function buildPortalAt(tx, tz, toNether) {
+    let y0 = -1;
+    if (toNether) { for (let y = 46; y > 14; y--) if (getBlockGlobal(tx, y - 1, tz) !== BLOCK.AIR && !isL(getBlockGlobal(tx, y - 1, tz)) && getBlockGlobal(tx, y, tz) === BLOCK.AIR && getBlockGlobal(tx, y + 3, tz) === BLOCK.AIR) { y0 = y; break; } if (y0 < 0) y0 = 30; }
+    else { for (let y = 62; y > 2; y--) { const b = getBlockGlobal(tx, y, tz); if (b !== BLOCK.AIR && b !== BLOCK.LEAVES && !isW(b) && !isL(b)) { y0 = y + 1; break; } } if (y0 < SEA + 2) y0 = SEA + 2; if (y0 > 56) y0 = 56; }
+    for (let u = -2; u <= 3; u++) for (let w = -1; w <= 1; w++) { for (let v = 0; v <= 4; v++) setBlockGlobal(tx + u, y0 + v, tz + w, BLOCK.AIR); setBlockGlobal(tx + u, y0 - 1, tz + w, BLOCK.OBS); }
+    for (let v = 0; v <= 2; v++) { setBlockGlobal(tx - 1, y0 + v, tz, BLOCK.OBS); setBlockGlobal(tx + 2, y0 + v, tz, BLOCK.OBS); }
+    for (let u = 0; u <= 1; u++) { setBlockGlobal(tx + u, y0 - 1, tz, BLOCK.OBS); setBlockGlobal(tx + u, y0 + 3, tz, BLOCK.OBS); for (let v = 0; v <= 2; v++) setBlockGlobal(tx + u, y0 + v, tz, BLOCK.PORTALA); }
+    return [tx, y0, tz];
+}
+function usePortal() {
+    const toNether = player.pos.x < NETHER_ZONE;
+    const tx = toNether ? Math.floor(player.pos.x / 8) + NETHER_X0 : (Math.floor(player.pos.x) - NETHER_X0) * 8, tz = toNether ? Math.floor(player.pos.z / 8) : Math.floor(player.pos.z) * 8;
+    player.pos.set(tx + .5, 40, tz + .5); updateChunks(player.pos, true); flushAll();
+    let p = findPortalNear(tx, tz, 12), x, y, z;
+    if (p) { [x, y, z] = p; x += .5; z += .5; } else { const b = buildPortalAt(tx, tz, toNether); x = b[0] + 1; y = b[1]; z = b[2] + .5; }
+    player.pos.set(x, y + .02, z); player.vel.set(0, 0, 0); player.kx = player.kz = 0; player.fallFrom = player.pos.y; portalCool = true;
+    updateChunks(player.pos, true); flushAll();
+    toast(toNether ? '你進入了地獄' : '你回到了主世界');
+}
 function liquidRay() {   // 桶子專用射線：會命中水與岩漿
     const o = camera.position; _dir.set(0, 0, -1).applyQuaternion(camera.quaternion).normalize();
     let px = Math.floor(o.x), py = Math.floor(o.y), pz = Math.floor(o.z);
     for (let t = 0; t < 5; t += .05) {
         const x = Math.floor(o.x + _dir.x * t), y = Math.floor(o.y + _dir.y * t), z = Math.floor(o.z + _dir.z * t), b = getBlockGlobal(x, y, z);
-        if (b !== BLOCK.AIR && !isCrop(b)) return { x, y, z, b, px, py, pz };
+        if (b !== BLOCK.AIR && !isCrop(b) && !isPortal(b)) return { x, y, z, b, px, py, pz };
         px = x; py = y; pz = z;
     }
     return null;
@@ -1798,7 +1726,7 @@ function setAvatarArmor(r, ar) {   // 在玩家模型上顯示護甲與盾牌
     const key = ar.join(); if (r.arKey === key) return; r.arKey = key;
     for (const [m, p] of r.armM || []) { p.remove(m); m.geometry.dispose(); }
     r.armM = []; const lg = r.g.userData.legs, G = r.g;
-    const add = (par, w, h, d, x, y, z, c) => { const m = new THREE.Mesh(texGeo(w, h, d), _ac[c] || (_ac[c] = new THREE.MeshLambertMaterial({ map: mobTex(c, c === 0x8a5a2a ? 'wood' : c === 0xb02e26 ? 'cloth' : 'metal') }))); m.position.set(x, y, z); par.add(m); r.armM.push([m, par]); };
+    const add = (par, w, h, d, x, y, z, c) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), _ac[c] || (_ac[c] = new THREE.MeshLambertMaterial({ color: c }))); m.position.set(x, y, z); par.add(m); r.armM.push([m, par]); };
     const pal = id => id >= 124 ? WORN_PAL.dia : WORN_PAL.iron;
     if (ar[0]) { const [D, B, L] = pal(ar[0]);   // 頭盔：圓頂、頂脊、護頰、護鼻
         add(G, .6, .16, .6, 0, 1.94, 0, B); add(G, .12, .08, .46, 0, 2.04, 0, L); add(G, .6, .48, .1, 0, 1.7, -.26, B); add(G, .1, .48, .52, -.28, 1.7, 0, B); add(G, .1, .48, .52, .28, 1.7, 0, B);
@@ -1837,7 +1765,7 @@ function updateMobs(dt) {
         for (const [rid, r] of remotes) { const ex = r.target.x - m.pos.x, ez = r.target.z - m.pos.z, ed = Math.hypot(ex, ez); if (ed < dist) { tp = r.target; tid = rid; dx = ex; dz = ez; dist = ed; } }
         if (m.hp <= 0 || (dist > 48 && m.type !== 'villager') || m.pos.y < -10) {
             if(m.hp<=0){
-                const loot={pig:[ITEM.PORK,3],chicken:[ITEM.CHICKEN,2],cow:[ITEM.BEEF,3],sheep:[ITEM.MUTTON,3],rabbit:[ITEM.RABBIT,2]}[m.type];
+                const loot={pig:[ITEM.PORK,3],chicken:[ITEM.CHICKEN,2],cow:[ITEM.BEEF,3],sheep:[ITEM.MUTTON,3],rabbit:[ITEM.RABBIT,2],pigman:[ITEM.FLINT,2]}[m.type];
                 if(loot) spawnDrop(loot[0],1+Math.floor(Math.random()*loot[1]),m.pos.x,m.pos.y+.5,m.pos.z);
             }
             removeMob(i); continue;
@@ -1846,9 +1774,9 @@ function updateMobs(dt) {
         if (isL(getBlockGlobal(Math.floor(m.pos.x), Math.floor(m.pos.y + .3), Math.floor(m.pos.z)))) { m.hp -= 4 * dt; m.flash = .2; m.vy = Math.max(m.vy, 1); }
         m.t -= dt; m.cd -= dt; m.flash -= dt;
         let speed = 0;
-        if ((m.type === 'zombie' && dist < 16) || (m.type === 'wolf' && m.angry && dist < 20)) {
-            m.ang = Math.atan2(dx, dz); speed = m.type === 'zombie' ? 2.3 : 3.2;
-            if (dist < 1.1 && Math.abs(tp.y - m.pos.y) < 1.5 && m.cd <= 0) { m.cd = 1.2; hurtPlayer(tid, 2, m.pos.x, m.pos.z); }
+        if ((m.type === 'zombie' && dist < 16) || (m.type === 'wolf' && m.angry && dist < 20) || (m.type === 'pigman' && m.angry && dist < 24)) {
+            m.ang = Math.atan2(dx, dz); speed = m.type === 'zombie' ? 2.3 : m.type === 'pigman' ? 2.8 : 3.2;
+            if (dist < 1.1 && Math.abs(tp.y - m.pos.y) < 1.5 && m.cd <= 0) { m.cd = 1.2; hurtPlayer(tid, m.type === 'pigman' ? 3 : 2, m.pos.x, m.pos.z); }
         } else {
             if (m.t <= 0) { m.t = 2 + Math.random() * 3; m.walking = Math.random() < 0.6; m.ang = Math.random() * 6.283; if (m.home && Math.hypot(m.home.x-m.pos.x,m.home.z-m.pos.z)>12) m.ang = Math.atan2(m.home.x-m.pos.x,m.home.z-m.pos.z); }
             if (m.home) {
@@ -1926,7 +1854,7 @@ function attackMob() {
         lastAttack = now;
         const dx = best.pos.x - player.pos.x, dz = best.pos.z - player.pos.z, d = Math.hypot(dx, dz) || 1;
         if (isClient) { netSend({ t: 'am', nid: best.nid, dmg: toolDmg(), kx: dx / d * 6, kz: dz / d * 6 }); best.flash = 0.25; }
-        else { if (best.type === 'wolf') best.angry = true; best.hp -= toolDmg(); best.flash = 0.25; best.vy = 4; best.kx = dx / d * 6; best.kz = dz / d * 6; }
+        else { if (best.type === 'wolf' || best.type === 'pigman') best.angry = true; best.hp -= toolDmg(); best.flash = 0.25; best.vy = 4; best.kx = dx / d * 6; best.kz = dz / d * 6; }
     }
     return true;
 }
@@ -1938,14 +1866,15 @@ function updateMining(dt) {
         mining = { x: targetBlock.x, y: targetBlock.y, z: targetBlock.z, p: 0 };
     const id = getBlockGlobal(mining.x, mining.y, mining.z);
     const held = slots[currentSlot]?.id, T = TOOLS[held]; let hard = HARDNESS[id] ?? 1;
-    const kind = (id === 3 || id === 4 || id === 8 || id === 31 || id === 32 || id === 33 || id === 39) ? 'pick' : (id === 5 || id === 6 || id === 12 || id === 14 || id === 34) ? 'axe' : (id === 2 || id === 1 || id === 9 || id === 13 || id === 15 || id === 16) ? 'shovel' : '';
+    const kind = (id === 3 || id === 4 || id === 8 || id === 31 || id === 32 || id === 33 || id === 39 || id === 40 || id === 42) ? 'pick' : (id === 5 || id === 6 || id === 12 || id === 14 || id === 34) ? 'axe' : (id === 2 || id === 1 || id === 9 || id === 13 || id === 15 || id === 16 || id === 41 || id === 45) ? 'shovel' : '';
     if (T && T.kind === kind) hard /= [2, 4, 6, 8][T.tier]; mining.p += dt / hard;
     col.setRGB(Math.min(mining.p, 1), 0, 0);
     if (mining.p >= 1) {
         setBlockGlobal(mining.x, mining.y, mining.z, BLOCK.AIR);
+        if (id === BLOCK.OBS) breakPortalAround(mining.x, mining.y, mining.z);
         if (id === BLOCK.CHESTB) { const k = mining.x + ',' + mining.y + ',' + mining.z, a = chestData.get(k); if (a) a.forEach(s => s && spawnDrop(s.id, s.n, mining.x + .5, mining.y + .5, mining.z + .5)); chestData.delete(k); netSend({ t: 'ch', k, a: [] }); }
         if (isCrop(id)) { if (id === BLOCK.CROP3) spawnDrop(ITEM.WHEAT, 1, mining.x + .5, mining.y + .3, mining.z + .5); const n = id === BLOCK.CROP3 ? 1 + Math.floor(Math.random() * 3) : 1; spawnDrop(ITEM.SEEDS, n, mining.x + .5, mining.y + .3, mining.z + .5); mining = null; col.setRGB(0, 0, 0); return; }
-        const nd = NEED_PICK[id], okTool = nd === undefined || (T && T.kind === 'pick' && T.tier >= nd), drop = !okTool ? BLOCK.AIR : (id in DROPS ? DROPS[id] : id);
+        const nd = NEED_PICK[id], okTool = nd === undefined || (T && T.kind === 'pick' && T.tier >= nd), drop = !okTool ? BLOCK.AIR : id === BLOCK.GRAVEL ? (Math.random() < .25 ? ITEM.FLINT : id) : (id in DROPS ? DROPS[id] : id);
         if (drop !== BLOCK.AIR) spawnDrop(drop, id === BLOCK.HAY ? 9 : 1, mining.x + .5, mining.y + .3, mining.z + .5);   // 稻草捆掉 9 個小麥
         mining = null; col.setRGB(0, 0, 0);
     }
@@ -1976,7 +1905,7 @@ function raycastVoxel() {
             if (tMaxY < tMaxZ) { if (tMaxY > maxDist) break; y += stepY; tMaxY += tDeltaY; normX = 0; normY = -stepY; normZ = 0; }
             else { if (tMaxZ > maxDist) break; z += stepZ; tMaxZ += tDeltaZ; normX = 0; normY = 0; normZ = -stepZ; }
         }
-        if (getBlockGlobal(x, y, z) !== BLOCK.AIR && !isW(getBlockGlobal(x, y, z)) && !isL(getBlockGlobal(x, y, z))) {
+        if (getBlockGlobal(x, y, z) !== BLOCK.AIR && !isW(getBlockGlobal(x, y, z)) && !isL(getBlockGlobal(x, y, z)) && !isPortal(getBlockGlobal(x, y, z))) {
             targetBlock = { x, y, z, placeX: x + normX, placeY: y + normY, placeZ: z + normZ };
             selectionBox.position.set(x + 0.5, y + 0.5, z + 0.5);
             selectionBox.visible = true;
@@ -2000,6 +1929,7 @@ window.addEventListener('mousedown', (e) => {
         const vm = findMob(); if (vm && vm.type === 'villager') { openTrade(vm); return; }
         const st = slots[currentSlot];
         if (st && st.id >= 135 && st.id <= 137) { useBucket(st); return; }
+        if (st && st.id === ITEM.FLINTSTEEL) { useFlintSteel(); return; }
         if (st && FOOD[st.id]) { if(eatSelected()) { if(hp<20){hp=Math.min(20,hp+2);drawHearts();} } return; }
     }
     if (!targetBlock) return;
@@ -2151,9 +2081,8 @@ function setFlash(r, on) { const sh = Object.values(_ac); r.g.traverse(o => { if
 function makeAvatar(id) {
     const g = new THREE.Group(); let h = 0; for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
     const col = new THREE.Color().setHSL((h % 360) / 360, .6, .5);
-    const AV = (w, hh, d, c) => { const hx = typeof c === 'object' ? c.getHex() : c; return mkBox(w, hh, d, hx, hx === 0xe8b98a ? 'skin' : hx === hair ? 'hair' : 'cloth'); };
-    const part = (w, hh, d, x, y, z, c) => { const b = AV(w, hh, d, c); b.position.set(x, y, z); g.add(b); };
-    const box = (w, hh, d, x, y, z, c, par) => { const b = AV(w, hh, d, c); b.position.set(x, y, z); (par || g).add(b); return b; };
+    const part = (w, hh, d, x, y, z, c) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), new THREE.MeshLambertMaterial({ color: c })); b.position.set(x, y, z); g.add(b); };
+    const box = (w, hh, d, x, y, z, c, par) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), new THREE.MeshLambertMaterial({ color: c })); b.position.set(x, y, z); (par || g).add(b); return b; };
     const legs = [], limb = (w, hh, d, x, y, z, c, ph, sl) => { const p = new THREE.Group(); p.position.set(x, y + hh / 2, z); g.add(p); box(w, hh, d, 0, -hh / 2, 0, c, p); if (sl) box(w + .02, hh * .45, d + .02, 0, -hh * .2, 0, sl, p); legs.push({ p, ph }); };
     const skin = 0xe8b98a, hair = new THREE.Color().setHSL(((h >> 3) % 40) / 360, .5, .22).getHex();
     box(.5, .7, .26, 0, 1.05, 0, col); box(.52, .1, .28, 0, .73, 0, 0x2f2f6a);
@@ -2214,7 +2143,7 @@ function onMsg(m, conn) {
     }
     else if (isHost && m.t === 'am') {
         const b = mobMap.get(m.nid); if (!b || !Number.isFinite(m.dmg)) return;
-        if (b.type === 'wolf') b.angry = true; b.hp -= Math.min(10, Math.max(0, m.dmg)); b.flash = .25; b.vy = 4; b.kx = +m.kx || 0; b.kz = +m.kz || 0;
+        if (b.type === 'wolf' || b.type === 'pigman') b.angry = true; b.hp -= Math.min(10, Math.max(0, m.dmg)); b.flash = .25; b.vy = 4; b.kx = +m.kx || 0; b.kz = +m.kz || 0;
     }
     else if (isHost && m.t === 'pv') {
         const n = Math.min(10, Math.max(0, +m.n || 0)); if (m.to === myId) hurt(n, m.fx, m.fz);
@@ -2239,10 +2168,13 @@ function netTick(dt) {
     const k = Math.min(1, dt * 10);
     for (const r of remotes.values()) { const mv = r.g.position.distanceToSquared(r.target) > .0009; r.g.position.lerp(r.target, k); r.g.rotation.y += (r.yaw - r.g.rotation.y) * k; animMob(r, mv, dt); if (r.flashT > 0) { r.flashT -= dt; if (r.flashT <= 0) setFlash(r, false); } }
 }
+let curPeer = null;
+function freshPeer(id) { if (curPeer) { try { curPeer.destroy(); } catch (e) {} } curPeer = id ? new Peer(id) : new Peer(); return curPeer; }
+window.addEventListener('beforeunload', () => { if (curPeer) { try { curPeer.destroy(); } catch (e) {} } });
 function hostGame() {
     roomCode = Array.from({ length: 5 }, () => CODE_CH[Math.floor(Math.random() * 32)]).join('');
     setStatus('建立房間中...');
-    const peer = new Peer('webmc-' + roomCode);
+    const peer = freshPeer('webmc-' + roomCode);
     peer.on('open', id => { isHost = true; myId = id; if (pendingWorld) applyWorld(pendingWorld); else setSeed(Math.floor(Math.random() * 2147483647)); startGame(); });
     peer.on('connection', c => {
         c.on('open', () => { conns.push(c); c.send({ t: 'init', seed: SEED, edits: allEdits(), chests: [...chestData] }); });
@@ -2255,7 +2187,7 @@ function joinGame() {
     const code = $('room-input').value.trim().toUpperCase();
     if (code.length !== 5) return setStatus('請輸入 5 碼房間代碼');
     roomCode = code; setStatus('連線中...');
-    const peer = new Peer();
+    const peer = freshPeer();
     peer.on('open', id => {
         myId = id;
         const c = peer.connect('webmc-' + code, { reliable: true });
@@ -2394,7 +2326,7 @@ function updateView(dt) {
     const eye = camera.position; let dist = 4;
     for (let t = .3; t <= 4; t += .1) {   // 鏡頭碰到方塊就拉近，避免穿牆
         const b = getBlockGlobal(Math.floor(eye.x + _vd.x * t), Math.floor(eye.y + _vd.y * t), Math.floor(eye.z + _vd.z * t));
-        if (b !== BLOCK.AIR && !isW(b) && !isL(b) && !isCrop(b)) { dist = Math.max(.4, t - .25); break; }
+        if (b !== BLOCK.AIR && !isW(b) && !isL(b) && !isPortal(b) && !isCrop(b)) { dist = Math.max(.4, t - .25); break; }
     }
     viewCam.position.copy(eye).addScaledVector(_vd, dist);
     viewCam.fov = camera.fov; viewCam.aspect = camera.aspect; viewCam.updateProjectionMatrix();
@@ -2489,7 +2421,7 @@ function gameLoop() {
     }
 
     if (document.pointerLockElement || (started && conns.length)) {   // 連機時開聊天/選單也不暫停世界
-        updatePhysics(dt);
+        updatePhysics(dt); portalTick(dt);
         raycastVoxel();
         updateMining(dt);
         updateMobs(dt);
