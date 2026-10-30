@@ -60,7 +60,7 @@ body, html { width: 100%; height: 100%; overflow: hidden; background-color: #78a
 <canvas id="minimap" width="150" height="150"></canvas>
 <div id="bigmap"><div id="bigmap-title">世界地圖　(M 關閉　滾輪縮放)</div><canvas id="bigmap-cv"></canvas></div>
 <div id="chat-box"><input id="chat-input" maxlength="100" autocomplete="off" placeholder="輸入訊息，Enter 送出，Esc 取消"></div>
-<div id="hint">Enter 聊天 (/tp 名字、/god、/rd 距離)<br>F4 切換視角<br>按住右鍵：盾牌格擋<br>桶子右鍵：取/放水與岩漿<br>R 穿戴裝備<br>M 大地圖<br>E 物品欄 / 2x2合成<br>Q 丟棄 (Ctrl+Q 整組)<br>右鍵拿食物：食用<br>左鍵攻擊生物<br>數字鍵切換快捷列</div>
+<div id="hint">Enter 聊天 (/tp 名字、/god、/rd 距離)<br>F4 切換視角<br>按住右鍵：盾牌格擋<br>桶子右鍵：取/放水與岩漿<br>R 穿戴裝備<br>M 大地圖<br>E 物品欄 / 2x2合成<br>Q 丟棄 (Ctrl+Q 整組)<br>右鍵拿食物：食用<br>左鍵攻擊生物<br>N 音效開關<br>數字鍵切換快捷列</div>
 <div id="hotbar-container"></div>
 <div id="debug-screen" class="hidden"></div>
 <div id="ui-layer">
@@ -119,6 +119,187 @@ if (ANTI_TAMPER) {
 const BLOCK = { AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, COBBLESTONE: 4, WOOD: 5, PLANKS: 6, LEAVES: 7, BRICK: 8, SAND: 9, GLASS: 10, BEDROCK: 11, CRAFT: 12, HAY: 13, DOOR: 14, PATH: 15, FARM: 16, LAMP: 17, WATER: 18, CROP: 19, BED: 20 };
 BLOCK.COAL_ORE = 31; BLOCK.DIAMOND_ORE = 33; BLOCK.CHESTB = 34; BLOCK.LAVA = 35; BLOCK.OBS = 39; BLOCK.NETHERRACK = 40; BLOCK.SOULSAND = 41; BLOCK.GLOWSTONE = 42; BLOCK.PORTALA = 43; BLOCK.PORTALB = 44; BLOCK.GRAVEL = 45; BLOCK.TORCH = 46; BLOCK.IRON_ORE = 32; BLOCK.CROP1 = 21; BLOCK.CROP2 = 22; BLOCK.CROP3 = 23; for (let l = 1; l <= 7; l++) BLOCK['FW' + l] = 23 + l;
 const isCrop = b => b === 19 || (b >= 21 && b <= 23), isW = b => b === 18 || (b >= 24 && b <= 30), wLvl = b => b === 18 ? 0 : b - 23;
+// ---- 音效系統（WebAudio 即時合成，不需任何外部音檔；按 N 可開關）----
+const { sfx, sfxAt, stepTick, feetMat, matOf, ambientTick, remoteBlockSnd } = (() => {
+    let ac = null, master = null, nbuf = null, muted = false, ambT = 0, stepD = 0, wasWater = false, swimT = 0;
+    try { muted = localStorage.getItem('mc_mute') === '1'; } catch (e) {}
+    const gate = {};
+    function init() {
+        if (ac) return;
+        const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+        try { ac = new AC(); } catch (e) { return; }
+        master = ac.createGain(); master.gain.value = muted ? 0 : .7;
+        const cp = ac.createDynamicsCompressor(); master.connect(cp); cp.connect(ac.destination);
+        nbuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+        const d = nbuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const unlock = () => { init(); if (ac && ac.state !== 'running') ac.resume().catch(() => {}); };
+    for (const ev of ['pointerdown', 'mousedown', 'keydown', 'touchstart']) window.addEventListener(ev, unlock, true);
+    const out = pan => { if (!pan || !ac.createStereoPanner) return master; const p = ac.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); p.connect(master); return p; };
+
+    function tone(f0, f1, dur, type, v, o = {}) {
+        const t0 = ac.currentTime + (o.t || 0), osc = ac.createOscillator(), g = ac.createGain();
+        osc.type = type; osc.frequency.setValueAtTime(f0, t0);
+        if (f1 !== f0) osc.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t0 + dur);
+        const a = Math.min(o.a || .006, dur * .5);
+        g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(Math.max(.0002, v), t0 + a); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+        let n = osc;
+        if (o.lp) { const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = o.lp; osc.connect(f); n = f; }
+        n.connect(g); g.connect(out(o.pan));
+        if (o.vib) { const l = ac.createOscillator(), lg = ac.createGain(); l.frequency.value = o.vib[0]; lg.gain.value = o.vib[1]; l.connect(lg); lg.connect(osc.frequency); l.start(t0); l.stop(t0 + dur + .05); }
+        osc.start(t0); osc.stop(t0 + dur + .05);
+    }
+    function noise(dur, ft, f0, f1, q, v, o = {}) {
+        const t0 = ac.currentTime + (o.t || 0), s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+        s.buffer = nbuf; s.loop = true; f.type = ft; f.Q.value = q; f.frequency.setValueAtTime(f0, t0);
+        if (f1 !== f0) f.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t0 + dur);
+        const a = Math.min(o.a || .004, dur * .5);
+        g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(Math.max(.0002, v), t0 + a); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+        s.connect(f); f.connect(g); g.connect(out(o.pan)); s.start(t0, Math.random() * .8); s.stop(t0 + dur + .05);
+    }
+
+    // 方塊材質
+    const MATS = {
+        grass: { nt: 'bandpass', nf: 1500, q: .6, d: .09 },
+        dirt: { nt: 'lowpass', nf: 900, q: .5, d: .1, tf: 95, tt: 'sine' },
+        sand: { nt: 'highpass', nf: 2800, q: .4, d: .12 },
+        gravel: { nt: 'bandpass', nf: 2400, q: .9, d: .11 },
+        stone: { nt: 'bandpass', nf: 1100, q: 1.5, d: .08, tf: 180, tt: 'square' },
+        wood: { nt: 'bandpass', nf: 650, q: 1.2, d: .09, tf: 210, tt: 'triangle' },
+        glass: { nt: 'highpass', nf: 4200, q: .5, d: .05, tf: 2600, tt: 'sine' },
+        cloth: { nt: 'lowpass', nf: 600, q: .4, d: .1 }
+    };
+    function matOf(b) {
+        if (b === 1 || b === 7 || b === 19 || (b >= 21 && b <= 23) || b === 46) return 'grass';
+        if (b === 2 || b === 15 || b === 16 || b === 41) return 'dirt';
+        if (b === 9) return 'sand';
+        if (b === 45) return 'gravel';
+        if (b === 10 || b === 17) return 'glass';
+        if (b === 5 || b === 6 || b === 12 || b === 13 || b === 14 || b === 34) return 'wood';
+        if (b === 20) return 'cloth';
+        return 'stone';
+    }
+    function blockSnd(mat, kind, v, pan) {
+        const m = MATS[mat] || MATS.stone, big = kind === 'break', k = big ? 1.5 : kind === 'place' ? 1.1 : kind === 'dig' ? .8 : .45;
+        const jit = .88 + Math.random() * .24, dur = m.d * (big ? 1.7 : 1);
+        noise(dur, m.nt, m.nf * jit * (kind === 'place' ? .85 : 1), m.nf * .55, m.q, .55 * k * v, { pan });
+        if (m.tf) tone(m.tf * jit, m.tf * .6, dur, m.tt, .22 * k * v, { pan });
+        if (big && (mat === 'gravel' || mat === 'stone' || mat === 'wood')) noise(dur * .8, m.nt, m.nf * 1.2 * jit, m.nf * .5, m.q, .4 * k * v, { pan, t: .05 });
+        if (mat === 'glass' && (big || kind === 'place')) for (let i = 0; i < (big ? 5 : 2); i++) tone(2200 + Math.random() * 2600, 1800, .12 + Math.random() * .1, 'sine', .12 * v, { pan, t: Math.random() * .12 });
+    }
+
+    // 生物叫聲：spec = 'pig:say' | 'pig:hurt' | 'pig:death'
+    function mobSnd(spec, v, pan) {
+        const [type, kind = 'say'] = spec.split(':'), hu = kind === 'hurt', de = kind === 'death', r = .92 + Math.random() * .16, o = { pan };
+        switch (type) {
+            case 'cow':
+                tone((de ? 150 : hu ? 190 : 120) * r, de ? 45 : hu ? 110 : 85, de ? .9 : hu ? .35 : .75, 'sawtooth', .28 * v, { ...o, lp: 800, vib: [5, 6] }); break;
+            case 'sheep':
+                tone((de ? 420 : hu ? 480 : 360) * r, de ? 120 : hu ? 380 : 300, de ? .6 : hu ? .3 : .55, 'sawtooth', .2 * v, { ...o, lp: 1400, vib: [26, 28] }); break;
+            case 'chicken':
+                for (let i = 0; i < (hu ? 1 : 3); i++) tone((hu ? 1300 : 1000 + i * 150) * r, hu ? 700 : 1500 + i * 100, hu ? .15 : .06, 'square', .12 * v, { ...o, t: i * .09, lp: 3000 }); break;
+            case 'rabbit':
+                tone(1700 * r, 1100 * r, .08, 'square', .1 * v, { ...o, lp: 3000 }); break;
+            case 'horse':
+                if (hu) tone(800 * r, 500, .3, 'sawtooth', .2 * v, { ...o, lp: 2400, vib: [14, 30] });
+                else { tone(560 * r, 1050 * r, .25, 'sawtooth', .2 * v, { ...o, lp: 2600, vib: [14, 30] }); tone(1050 * r, de ? 250 : 420, de ? .8 : .45, 'sawtooth', .2 * v, { ...o, lp: 2400, vib: [14, 30], t: .25 }); } break;
+            case 'wolf':
+                if (hu || de) tone(900 * r, de ? 300 : 550, de ? .9 : .35, 'sine', .2 * v, { ...o, vib: [8, 40] });
+                else { tone(95 * r, 70 * r, .6, 'sawtooth', .22 * v, { ...o, lp: 600, vib: [30, 12] }); noise(.55, 'lowpass', 500, 300, .6, .15 * v, o); } break;
+            case 'zombie':
+                if (de) tone(110 * r, 38, 1, 'sawtooth', .28 * v, { ...o, lp: 500, vib: [6, 10] });
+                else if (hu) tone(160 * r, 95, .3, 'sawtooth', .25 * v, { ...o, lp: 600 });
+                else { tone(115 * r, 78 * r, .8, 'sawtooth', .26 * v, { ...o, lp: 520, vib: [7, 14] }); noise(.7, 'lowpass', 420, 200, .8, .16 * v, o); } break;
+            case 'villager':
+                if (de) tone(280 * r, 90, .6, 'sawtooth', .2 * v, { ...o, lp: 1100 });
+                else if (hu) tone(300 * r, 200, .25, 'sawtooth', .2 * v, { ...o, lp: 1200 });
+                else { tone(210 * r, 250 * r, .14, 'sawtooth', .2 * v, { ...o, lp: 1100 }); tone(270 * r, 200 * r, .2, 'sawtooth', .2 * v, { ...o, lp: 1100, t: .17 }); } break;
+            case 'pigman':
+                if (de) tone(160 * r, 50, .8, 'sawtooth', .25 * v, { ...o, lp: 700 });
+                else if (hu) tone(220 * r, 120, .3, 'sawtooth', .25 * v, { ...o, lp: 900 });
+                else { tone(135 * r, 90 * r, .3, 'sawtooth', .25 * v, { ...o, lp: 700 }); tone(70, 60, .3, 'square', .15 * v, o); } break;
+            default: // pig 與其他
+                if (hu || de) tone(700 * r, de ? 180 : 420, de ? .55 : .25, 'sawtooth', .22 * v, { ...o, lp: 2200 });
+                else { tone(240 * r, 150 * r, .16, 'sawtooth', .22 * v, { ...o, lp: 1200 }); tone(250 * r, 170 * r, .14, 'sawtooth', .18 * v, { ...o, lp: 1200, t: .2 }); }
+                noise(.12, 'bandpass', 500, 300, 1, .12 * v, o);
+        }
+    }
+
+    const GAP = { dig: .1, hurt: .25, pop: .04, step: .12, break: .03, place: .03, mob: .08, click: .03, slot: .03, swim: .3, splash: .2, land: .15, hit: .12 };
+    function play(kind, a, v, pan) {
+        switch (kind) {
+            case 'step': case 'dig': case 'break': case 'place': blockSnd(a, kind, v, pan); break;
+            case 'jump': noise(.07, 'lowpass', 500, 300, .5, .1 * v, { pan }); break;
+            case 'land': noise(.12, 'lowpass', 500, 200, .6, .5 * v, { pan }); tone(110, 45, .16, 'sine', .35 * v, { pan }); break;
+            case 'hurt': tone(320, 140, .2, 'sawtooth', .3 * v, { pan, lp: 1800 }); tone(240, 110, .22, 'square', .15 * v, { pan, lp: 1500 }); noise(.1, 'bandpass', 900, 400, .8, .25 * v, { pan }); break;
+            case 'death': tone(380, 50, .9, 'sawtooth', .3 * v, { lp: 1500 }); tone(280, 40, 1, 'square', .14 * v, { lp: 1000 }); break;
+            case 'eat': for (let i = 0; i < 3; i++) { noise(.07, 'bandpass', 1800 + Math.random() * 500, 900, 1.4, .5 * v, { t: i * .14 }); tone(220, 140, .05, 'square', .08 * v, { t: i * .14 }); } break;
+            case 'pop': tone(420 * (.9 + Math.random() * .3), 1000, .09, 'sine', .22 * v, { pan }); break;
+            case 'hit': noise(.08, 'bandpass', 1300, 600, .9, .5 * v, { pan }); tone(160, 70, .1, 'square', .2 * v, { pan }); break;
+            case 'splash': noise(.35, 'bandpass', 1400, 500, .7, .5 * v, { pan }); noise(.25, 'lowpass', 500, 200, .6, .4 * v, { pan }); break;
+            case 'swim': noise(.22, 'bandpass', 900, 600, .6, .18 * v, { pan }); break;
+            case 'bucket': noise(.5, 'bandpass', a === 2 ? 500 : 1100, a === 2 ? 200 : 350, .8, .4 * v, { pan }); tone(a === 2 ? 140 : 340, a === 2 ? 90 : 200, .3, 'sine', .12 * v, { pan }); break;
+            case 'ignite': for (let i = 0; i < 5; i++) noise(.04, 'highpass', 3500, 3000, .5, .3 * v, { t: i * .05 + Math.random() * .03 }); noise(.5, 'bandpass', 700, 2200, .6, .2 * v, { t: .15 }); break;
+            case 'chest': tone(130, 230, .28, 'sawtooth', .14 * v, { lp: 700 }); tone(90, 60, .12, 'triangle', .3 * v, { t: .28 }); break;
+            case 'armor': tone(1500, 1100, .18, 'triangle', .18 * v); tone(2300, 1900, .12, 'sine', .1 * v, { t: .04 }); noise(.1, 'bandpass', 3000, 2000, 1, .15 * v); break;
+            case 'throw': noise(.14, 'bandpass', 900, 300, .7, .25 * v); break;
+            case 'click': tone(900, 650, .04, 'square', .1 * v); break;
+            case 'slot': tone(700, 600, .03, 'triangle', .1 * v); break;
+            case 'portal': noise(.8, 'lowpass', 250, 3500, .9, .35 * v); tone(180, 520, .8, 'sine', .2 * v, { vib: [9, 18] }); break;
+            case 'mob': mobSnd(a, v, pan); break;
+        }
+    }
+    function sfx(kind, a, v = 1, pan = 0) {
+        if (!ac || muted || ac.state !== 'running') return;
+        const now = ac.currentTime, key = kind === 'mob' ? kind + a : kind;
+        if (gate[key] !== undefined && now - gate[key] < (GAP[kind] || 0)) return;
+        gate[key] = now;
+        try { play(kind, a, v, pan); } catch (e) {}
+    }
+    function sfxAt(kind, a, x, y, z, v = 1) {   // 依距離衰減、依視角左右聲道
+        if (!ac || muted) return;
+        const dx = x - player.pos.x, dy = y - player.pos.y, dz = z - player.pos.z, d = Math.hypot(dx, dy, dz);
+        if (d > 28) return;
+        const att = Math.pow(1 - d / 28, 1.5); if (att < .04) return;
+        sfx(kind, a, v * att, d > .5 ? (dx * Math.cos(yaw) - dz * Math.sin(yaw)) / d : 0);
+    }
+    const feetMat = () => matOf(getBlockGlobal(Math.floor(player.pos.x), Math.floor(player.pos.y - .1), Math.floor(player.pos.z)));
+    function stepTick(dt, moving, speed, sneak) {   // 腳步聲、入水與游泳
+        const inW = liqAt(player.pos.x, player.pos.y + .5, player.pos.z, isW);
+        if (inW && !wasWater) sfx('splash', 0, Math.min(1, .4 + Math.abs(player.vel.y) / 10));
+        wasWater = inW;
+        if (inW) { if (moving) { swimT -= dt; if (swimT <= 0) { swimT = .55; sfx('swim'); } } return; }
+        if (!player.onGround) return;
+        if (!moving) { stepD = Math.max(stepD, 1.15); return; }
+        stepD += speed * dt;
+        if (stepD >= 2.1) { stepD = 0; sfx('step', feetMat(), sneak ? .35 : 1); }
+    }
+    function ambientTick(dt) {   // 附近生物偶爾發出叫聲
+        if (!ac || muted) return; ambT -= dt; if (ambT > 0) return; ambT = .5;
+        for (const m of mobs) {
+            if (Math.hypot(m.pos.x - player.pos.x, m.pos.z - player.pos.z) > 20) continue;
+            const p = m.type === 'zombie' ? .06 : m.type === 'rabbit' ? 0 : m.type === 'villager' ? .015 : .025;
+            if (Math.random() < p) { sfxAt('mob', m.type + ':say', m.pos.x, m.pos.y + 1, m.pos.z); break; }
+        }
+    }
+    function remoteBlockSnd(x, y, z, t) {   // 其他玩家放置/破壞方塊的聲音
+        try {
+            if (!started) return;
+            const old = getBlockGlobal(x, y, z);
+            if (t === old || isW(t) || isL(t) || isW(old) || isL(old) || isCrop(t) || isCrop(old)) return;
+            if (t === 0) { if (old !== 0) sfxAt('break', matOf(old), x + .5, y + .5, z + .5); }
+            else sfxAt('place', matOf(t), x + .5, y + .5, z + .5);
+        } catch (e) {}
+    }
+    window.addEventListener('keydown', e => {   // N：音效開關
+        if (e.code !== 'KeyN' || e.repeat || !started || chatOpen) return;
+        muted = !muted; if (master) master.gain.value = muted ? 0 : .7;
+        try { localStorage.setItem('mc_mute', muted ? '1' : '0'); } catch (err) {}
+        toast(muted ? '音效：關' : '音效：開'); if (!muted) sfx('click');
+    });
+    document.addEventListener('click', e => { if (e.target.closest && e.target.closest('.mc-btn')) sfx('click'); }, true);
+    return { sfx, sfxAt, stepTick, feetMat, matOf, ambientTick, remoteBlockSnd };
+})();
 const isPortal = b => b === 43 || b === 44, isL = b => b >= 35 && b <= 38, lLvl = b => b === 35 ? 0 : b - 35;
 function liqH(b, ab) {   // 液面高度（0~1）：水 8 階、岩漿 4 階，與原版相同的階梯式深淺
     const w = isW(b); if (w ? isW(ab) : isL(ab)) return 1;
@@ -801,6 +982,7 @@ for (let i = 9; i < 36; i++) cInvEls[i] = mkSlot(document.getElementById('c-inv-
 for (let i = 0; i < 9; i++) cInvEls[i] = mkSlot(document.getElementById('c-inv-hot'), 'inv-slot', slots, i);
 chestScreen.addEventListener('mousedown', e => { if (e.target !== chestScreen || !cursor) return; const n = e.button === 2 ? 1 : cursor.n; throwItem(cursor.id, n); cursor.n -= n; if (cursor.n <= 0) cursor = null; updateHotbar(); });
 function openChest(tb) {
+    sfx('chest');
     chestKey = tb.x + ',' + tb.y + ',' + tb.z; const it = chestData.get(chestKey) || [];
     chestGrid.fill(null); it.forEach((s, i) => { chestGrid[i] = s ? { id: s.id, n: s.n } : null; });
     chestOpen = true; invOpen = true; mouseDown = false; for (const k in keys) keys[k] = false; document.exitPointerLock();
@@ -913,7 +1095,7 @@ function tableOutClick(shift){
     else if(!cursor || (cursor.id===out.id && cursor.n+out.n<=MAX_STACK)){ if(cursor)cursor.n+=out.n; else cursor={...out}; consume(); }
     updateHotbar();
 }
-function openTable(){
+function openTable(){ sfx('click');
     tableOpen=true; invOpen=true; mouseDown=false; for(const k in keys) keys[k]=false; document.exitPointerLock();
     tableScreen.classList.remove('hidden'); tableScreen.classList.add('open'); updateHotbar();
 }
@@ -934,12 +1116,13 @@ function outClick(shift) {
     }
     updateHotbar();
 }
-function selectSlot(i) { hotEls[currentSlot].classList.remove('active'); currentSlot = i; hotEls[i].classList.add('active'); }
+function selectSlot(i) { sfx('slot'); hotEls[currentSlot].classList.remove('active'); currentSlot = i; hotEls[i].classList.add('active'); }
 selectSlot(0);
 window.addEventListener('wheel', e => { if (document.pointerLockElement) selectSlot((currentSlot + (e.deltaY > 0 ? 1 : 8)) % 9); });
 function useSel() { const s = slots[currentSlot]; if (s && --s.n <= 0) slots[currentSlot] = null; updateHotbar(); }
 
 function openInv() {
+    sfx('click');
     invOpen = true; mouseDown = false; for (const k in keys) keys[k] = false;
     document.exitPointerLock(); invScreen.classList.add('open'); updateHotbar();
 }
@@ -949,7 +1132,7 @@ function closeInv(relock) {
     invOpen = false; invScreen.classList.remove('open'); updateHotbar();
     if (relock) renderer.domElement.requestPointerLock(); else document.getElementById('ui-layer').classList.remove('hidden');
 }
-function throwItem(id, n) {
+function throwItem(id, n) { sfx('throw');
     _dir.set(0, 0, -1).applyQuaternion(camera.quaternion);
     spawnDrop(id, n, camera.position.x, camera.position.y - .3, camera.position.z, _dir.x * 4, _dir.y * 4 + 1.5, _dir.z * 4);
 }
@@ -1041,7 +1224,7 @@ function applyDropSnap(list) {
         if (!d) { d = { nid, id, n, mesh: makeDropMesh(id), pos: new THREE.Vector3(x, y, z), tp: new THREE.Vector3(x, y, z), age: 0, delay: 0, ready: false }; drops.push(d); dropMap.set(nid, d); }
         d.tp.set(x, y, z); d.n = n; d.ready = !!rdy;
     }
-    for (let i = drops.length - 1; i >= 0; i--) { const d = drops[i]; if (!seen.has(d.nid)) { scene.remove(d.mesh); drops.splice(i, 1); dropMap.delete(d.nid); pendingPk.delete(d.nid); } }
+    for (let i = drops.length - 1; i >= 0; i--) { const d = drops[i]; if (!seen.has(d.nid)) { if (pendingPk.has(d.nid)) sfx('pop'); scene.remove(d.mesh); drops.splice(i, 1); dropMap.delete(d.nid); pendingPk.delete(d.nid); } }
 }
 const PICK_TOAST = new Set([45, 132, 133, 134, 138]);   // 礫石、鐵、煤炭、鑽石、燧石
 function updateDrops(dt) {
@@ -1062,7 +1245,7 @@ function updateDrops(dt) {
             const dx = player.pos.x - p.x, dy = player.pos.y + .9 - p.y, dz = player.pos.z - p.z;
             if (dx * dx + dy * dy + dz * dz < 2.25) {
                 const left = addItem(d.id, d.n), got = d.n - left;
-                if (got > 0 && PICK_TOAST.has(d.id)) toast('+' + got + ' ' + (NAMES[d.id] || ''));   // 撿到礦物／礫石時提示，快捷欄滿了放進背包也看得到
+                if (got > 0) sfx('pop'); if (got > 0 && PICK_TOAST.has(d.id)) toast('+' + got + ' ' + (NAMES[d.id] || ''));   // 撿到礦物／礫石時提示，快捷欄滿了放進背包也看得到
                 if (left <= 0) { scene.remove(d.mesh); drops.splice(i, 1); } else d.n = left;
             }
         }
@@ -1083,7 +1266,7 @@ function drawHearts() {
 function drawHunger(){let h='';for(let i=0;i<10;i++)h+=`<span style="color:#f5b642;opacity:${hunger>=2*i+2?1:hunger===2*i+1?.55:.2}">🍗</span>`;hungerEl.innerHTML=h;}
 function eatSelected(){
     const st=slots[currentSlot], gain=st&&FOOD[st.id]; if(!gain||hunger>=20)return false;
-    hunger=Math.min(20,hunger+gain); st.n--; if(st.n<=0)slots[currentSlot]=null; drawHunger(); updateHotbar(); return true;
+    sfx('eat'); hunger=Math.min(20,hunger+gain); st.n--; if(st.n<=0)slots[currentSlot]=null; drawHunger(); updateHotbar(); return true;
 }
 updateHotbar(); drawHearts(); drawHunger();
 
@@ -1427,6 +1610,7 @@ function getBlockGlobal(x, y, z) {
 }
 
 function setBlockGlobal(x, y, z, type, remote = false) {
+    if (remote) remoteBlockSnd(x, y, z, type);
     wake(x, y, z); wake(x + 1, y, z); wake(x - 1, y, z); wake(x, y + 1, z); wake(x, y - 1, z); wake(x, y, z + 1); wake(x, y, z - 1); if (isCrop(type)) cropSet.add(x + ',' + y + ',' + z);
     { const tk = x + ',' + y + ',' + z; if (type === BLOCK.TORCH) torchPos.set(tk, [x, y, z]); else torchPos.delete(tk); }
     const cx = Math.floor(x / CHUNK_SIZE), cz = Math.floor(z / CHUNK_SIZE);
@@ -1502,7 +1686,7 @@ function hurt(n, fx, fz, quiet) {
     if (godMode) return;
     if (fx !== undefined && n > 0) n = blocking() ? Math.floor(n * .2) : Math.max(1, Math.round(n * (1 - armorPts() * .04)));
     if (!quiet && fx !== undefined) { const dx = player.pos.x - fx, dz = player.pos.z - fz, d = Math.hypot(dx, dz) || 1; player.kx = dx / d * 9; player.kz = dz / d * 9; player.vel.y = Math.max(player.vel.y, 5.5); player.onGround = false; }
-    hp = Math.max(0, hp - n); lastHurt = performance.now(); regenT = 0;
+    hp = Math.max(0, hp - n); lastHurt = performance.now(); regenT = 0; if (n > 0 && hp > 0) sfx('hurt');
     if (!quiet && selfR) { selfR.flashT = .3; setFlash(selfR, true); }
     if (!quiet) { hurtEl.style.opacity = 1; setTimeout(() => hurtEl.style.opacity = 0, 120); netSend({ t: 'ph', id: myId }); }
     drawHearts(); if (hp <= 0) die();
@@ -1514,7 +1698,7 @@ function spawn() {
     player.fallFrom = player.pos.y;
 }
 function die() {
-    dropAll(); clearZombies(); hp = 20; drawHearts(); mining = null; mouseDown = false;
+    sfx('death'); dropAll(); clearZombies(); hp = 20; drawHearts(); mining = null; mouseDown = false;
     spawn();
     document.getElementById('mc-title').textContent = '你死了！';
     document.exitPointerLock();
@@ -1578,7 +1762,7 @@ function updatePhysics(dt) {
         player.vel.y = Math.max(player.vel.y * Math.max(0, 1 - 6 * dt), -1.5); if (keys['Space']) player.vel.y = 2.5; player.fallFrom = player.pos.y;
         lavaT += dt; if (lavaT > .5) { lavaT = 0; hurt(4, undefined, undefined, true); }
       } else lavaT = 0; }
-    if (keys['Space'] && player.onGround) { player.vel.y = player.jumpForce; player.onGround = false; }
+    if (keys['Space'] && player.onGround) { player.vel.y = player.jumpForce; player.onGround = false; sfx('jump'); }
 
     if (godMode) { player.vel.y = (keys['Space'] ? 9 : 0) + ((keys['ShiftLeft'] || keys['ShiftRight']) ? -9 : 0); player.fallFrom = player.pos.y; }
     player.pos.y += player.vel.y * dt;
@@ -1590,6 +1774,7 @@ function updatePhysics(dt) {
         if (falling) {
             const fall = player.fallFrom - player.pos.y;
             player.fallFrom = player.pos.y;
+            if (fall > 1.5) sfx('land', feetMat(), Math.min(1, fall / 7));
             if (fall > 3.5) hurt(Math.floor(fall - 3), undefined, undefined, true);
         }
     } else {
@@ -1597,6 +1782,7 @@ function updatePhysics(dt) {
         if (player.pos.y > player.fallFrom) player.fallFrom = player.pos.y;
     }
 
+    stepTick(dt, _move.lengthSq() > 0 && !godMode, speed, sneak);
     if (player.pos.y < -10) hurt(20, undefined, undefined, true);
 
     camera.position.set(player.pos.x, player.pos.y + (keys['KeyC'] ? 1.3 : 1.6), player.pos.z);
@@ -1812,7 +1998,7 @@ const tradeEl = document.createElement('div'); tradeEl.className = 'hidden';
 tradeEl.style.cssText = 'position:absolute;inset:0;z-index:25;background:rgba(0,0,0,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-size:26px';
 document.body.appendChild(tradeEl);
 let tradeOpen = false;
-function openTrade(m) {
+function openTrade(m) { sfxAt('mob', 'villager:say', m.pos.x, m.pos.y + 1, m.pos.z);
     const p = PROF[m.prof || 0]; tradeOpen = true; invOpen = true; mouseDown = false; for (const k in keys) keys[k] = false; document.exitPointerLock();
     const render = () => {
         tradeEl.innerHTML = `<div style="font-size:36px;margin-bottom:14px">${p[0]} 村民　綠寶石：${countItem(ITEM.EMERALD)}</div>`;
@@ -1922,7 +2108,7 @@ function tryLightPortal(px, py, pz) {   // 打火石：在黑曜石框內點燃�
     }
     return false;
 }
-function useFlintSteel() { const h = liquidRay(); if (h && tryLightPortal(h.px, h.py, h.pz)) toast('傳送門已開啟'); }
+function useFlintSteel() { const h = liquidRay(); if (h && tryLightPortal(h.px, h.py, h.pz)) { toast('傳送門已開啟'); sfx('ignite'); } }
 function breakPortalAround(x, y, z) {   // 黑曜石框被拆掉：相連的傳送門一起消失
     const q = []; for (const [a, b, c] of [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]) if (isPortal(getBlockGlobal(x + a, y + b, z + c))) q.push([x + a, y + b, z + c]);
     let n = 0; while (q.length && n++ < 600) {
@@ -1935,7 +2121,7 @@ const portalFx = document.createElement('div'); portalFx.style.cssText = 'positi
 function portalTick(dt) {
     const bx = Math.floor(player.pos.x), bz = Math.floor(player.pos.z), inP = isPortal(getBlockGlobal(bx, Math.floor(player.pos.y + .3), bz)) || isPortal(getBlockGlobal(bx, Math.floor(player.pos.y + 1.2), bz));
     if (!inP) { portalCool = false; portalT = Math.max(0, portalT - dt * 2); }
-    else if (!portalCool) { portalT += dt; if (portalT >= 1.8) { portalT = 0; usePortal(); } }
+    else if (!portalCool) { if (portalT === 0) sfx('portal', 0, .7); portalT += dt; if (portalT >= 1.8) { portalT = 0; usePortal(); } }
     portalFx.style.opacity = Math.min(.9, portalT / 1.8 * .9);
 }
 function findPortalNear(tx, tz, r) {
@@ -1983,14 +2169,14 @@ function setHeld(id) {
 function useBucket(st) {
     const h = liquidRay(); if (!h) return;
     if (st.id === ITEM.BUCKET) {
-        if (h.b === BLOCK.WATER) { setBlockGlobal(h.x, h.y, h.z, BLOCK.AIR); setHeld(ITEM.WBUCKET); }
-        else if (h.b === BLOCK.LAVA) { setBlockGlobal(h.x, h.y, h.z, BLOCK.AIR); setHeld(ITEM.LBUCKET); }
+        if (h.b === BLOCK.WATER) { setBlockGlobal(h.x, h.y, h.z, BLOCK.AIR); sfx('bucket', 1); setHeld(ITEM.WBUCKET); }
+        else if (h.b === BLOCK.LAVA) { setBlockGlobal(h.x, h.y, h.z, BLOCK.AIR); sfx('bucket', 2); setHeld(ITEM.LBUCKET); }
         return;
     }
     const flow = (isW(h.b) && h.b !== BLOCK.WATER) || (isL(h.b) && h.b !== BLOCK.LAVA), [tx, ty, tz] = flow ? [h.x, h.y, h.z] : [h.px, h.py, h.pz], tb = getBlockGlobal(tx, ty, tz);
     if (tb !== BLOCK.AIR && !(isW(tb) || isL(tb))) return;
     if (tb === BLOCK.WATER || tb === BLOCK.LAVA) return;
-    setBlockGlobal(tx, ty, tz, st.id === ITEM.WBUCKET ? BLOCK.WATER : BLOCK.LAVA); setHeld(ITEM.BUCKET);
+    setBlockGlobal(tx, ty, tz, st.id === ITEM.WBUCKET ? BLOCK.WATER : BLOCK.LAVA); sfx('bucket', st.id === ITEM.WBUCKET ? 1 : 2); setHeld(ITEM.BUCKET);
 }
 const _ac = {};
 const WORN_PAL = { iron: [0x8d9297, 0xc9cdd1, 0xeef1f3], dia: [0x1fa9a6, 0x3fe0d6, 0xc8fffb] };   // 暗/底/亮
@@ -2036,7 +2222,7 @@ function updateMobs(dt) {
         let tp = player.pos, tid = null, dx = tp.x - m.pos.x, dz = tp.z - m.pos.z, dist = Math.hypot(dx, dz);
         for (const [rid, r] of remotes) { const ex = r.target.x - m.pos.x, ez = r.target.z - m.pos.z, ed = Math.hypot(ex, ez); if (ed < dist) { tp = r.target; tid = rid; dx = ex; dz = ez; dist = ed; } }
         if (m.hp <= 0 || (dist > 48 && m.type !== 'villager') || m.pos.y < -10) {
-            if(m.hp<=0){
+            if(m.hp<=0){ sfxAt('mob', m.type + ':death', m.pos.x, m.pos.y + .5, m.pos.z);
                 const loot={pig:[ITEM.PORK,3],chicken:[ITEM.CHICKEN,2],cow:[ITEM.BEEF,3],sheep:[ITEM.MUTTON,3],rabbit:[ITEM.RABBIT,2],pigman:[ITEM.FLINT,2]}[m.type];
                 if(loot) spawnDrop(loot[0],1+Math.floor(Math.random()*loot[1]),m.pos.x,m.pos.y+.5,m.pos.z);
             }
@@ -2121,9 +2307,9 @@ function attackMob() {
     }
     if (!best && !tgt) return false;
     const now = performance.now();
-    if (tgt) { if (now - lastAttack >= 450) { lastAttack = now; pvpHit(tgt); } return true; }
+    if (tgt) { if (now - lastAttack >= 450) { lastAttack = now; sfx('hit'); pvpHit(tgt); } return true; }
     if (now - lastAttack >= 450) {
-        lastAttack = now;
+        lastAttack = now; sfx('hit'); sfxAt('mob', best.type + ':hurt', best.pos.x, best.pos.y + .5, best.pos.z);
         const dx = best.pos.x - player.pos.x, dz = best.pos.z - player.pos.z, d = Math.hypot(dx, dz) || 1;
         if (isClient) { netSend({ t: 'am', nid: best.nid, dmg: toolDmg(), kx: dx / d * 6, kz: dz / d * 6 }); best.flash = 0.25; }
         else { if (best.type === 'wolf' || best.type === 'pigman') best.angry = true; best.hp -= toolDmg(); best.flash = 0.25; best.vy = 4; best.kx = dx / d * 6; best.kz = dz / d * 6; }
@@ -2141,7 +2327,9 @@ function updateMining(dt) {
     const kind = (id === 3 || id === 4 || id === 8 || id === 31 || id === 32 || id === 33 || id === 39 || id === 40 || id === 42) ? 'pick' : (id === 5 || id === 6 || id === 12 || id === 14 || id === 34) ? 'axe' : (id === 2 || id === 1 || id === 9 || id === 13 || id === 15 || id === 16 || id === 41 || id === 45) ? 'shovel' : '';
     if (T && T.kind === kind) hard /= [2, 4, 6, 8][T.tier]; mining.p += dt / hard;
     col.setRGB(Math.min(mining.p, 1), 0, 0);
+    mining.tk = (mining.tk || 0) - dt; if (mining.tk <= 0 && mining.p < 1) { mining.tk = .22; sfx('dig', matOf(id)); }
     if (mining.p >= 1) {
+        sfx('break', matOf(id));
         setBlockGlobal(mining.x, mining.y, mining.z, BLOCK.AIR);
         if (id === BLOCK.OBS) breakPortalAround(mining.x, mining.y, mining.z);
         if (id === BLOCK.CHESTB) { const k = mining.x + ',' + mining.y + ',' + mining.z, a = chestData.get(k); if (a) a.forEach(s => s && spawnDrop(s.id, s.n, mining.x + .5, mining.y + .5, mining.z + .5)); chestData.delete(k); netSend({ t: 'ch', k, a: [] }); }
@@ -2211,8 +2399,8 @@ window.addEventListener('mousedown', (e) => {
         if(getBlockGlobal(targetBlock.x,targetBlock.y,targetBlock.z)===BLOCK.CHESTB){openChest(targetBlock);return;}
         if(getBlockGlobal(targetBlock.x,targetBlock.y,targetBlock.z)===BLOCK.BED){sleepInBed();return;}
         { const tb = targetBlock, bt = getBlockGlobal(tb.x, tb.y, tb.z), held = slots[currentSlot]?.id, up = getBlockGlobal(tb.x, tb.y + 1, tb.z);
-          if (held === ITEM.SEEDS && bt === BLOCK.FARM && up === BLOCK.AIR) { setBlockGlobal(tb.x, tb.y + 1, tb.z, BLOCK.CROP); useSel(); return; }
-          if ((TOOLS[held] && TOOLS[held].kind === 'hoe') && (bt === BLOCK.GRASS || bt === BLOCK.DIRT || bt === BLOCK.PATH) && up === BLOCK.AIR) { setBlockGlobal(tb.x, tb.y, tb.z, BLOCK.FARM); return; } }
+          if (held === ITEM.SEEDS && bt === BLOCK.FARM && up === BLOCK.AIR) { setBlockGlobal(tb.x, tb.y + 1, tb.z, BLOCK.CROP); sfx('place', 'grass'); useSel(); return; }
+          if ((TOOLS[held] && TOOLS[held].kind === 'hoe') && (bt === BLOCK.GRASS || bt === BLOCK.DIRT || bt === BLOCK.PATH) && up === BLOCK.AIR) { setBlockGlobal(tb.x, tb.y, tb.z, BLOCK.FARM); sfx('dig', 'dirt'); return; } }
 
         const st = slots[currentSlot], selBlock = st && BLOCK_UV[st.id] ? st.id : BLOCK.AIR;
         if (selBlock !== BLOCK.AIR) {
@@ -2221,7 +2409,7 @@ window.addEventListener('mousedown', (e) => {
                             player.pos.y < by + 1 - e && player.pos.y + player.box.height > by + e &&
                             player.pos.z - hw < bz + 1 - e && player.pos.z + hw > bz + e;
             if (overlap) { toast('不能把方塊放在自己身上'); return; }
-            setBlockGlobal(bx, by, bz, selBlock);
+            setBlockGlobal(bx, by, bz, selBlock); sfx('place', matOf(selBlock));
             useSel();
         }
     }
@@ -2245,7 +2433,7 @@ document.addEventListener('keydown', e => {
     if (!document.pointerLockElement) return;
     if (e.code === 'KeyQ') { const st = slots[currentSlot]; if (st) { const n = e.ctrlKey ? st.n : 1; throwItem(st.id, n); st.n -= n; if (st.n <= 0) slots[currentSlot] = null; updateHotbar(); } }
     else if (/^Digit[1-9]$/.test(e.code)) selectSlot(+e.code[5] - 1);
-    else if(e.code==='KeyR'){ const st=slots[currentSlot], k=st&&ARMOR_KEYS.find(k=>ARMOR_OK[k].includes(st.id)); if(k&&!armor[k]){armor[k]={id:st.id,n:1};st.n--;if(st.n<=0)slots[currentSlot]=null;updateHotbar();} }
+    else if(e.code==='KeyR'){ const st=slots[currentSlot], k=st&&ARMOR_KEYS.find(k=>ARMOR_OK[k].includes(st.id)); if(k&&!armor[k]){armor[k]={id:st.id,n:1};sfx('armor');st.n--;if(st.n<=0)slots[currentSlot]=null;updateHotbar();} }
 });
 const dbg = document.getElementById('debug-screen');
 document.addEventListener('keydown', (e) => {
@@ -2698,7 +2886,7 @@ function gameLoop() {
         updatePhysics(dt); portalTick(dt);
         raycastVoxel();
         updateMining(dt);
-        updateMobs(dt);
+        updateMobs(dt); ambientTick(dt);
         updateDrops(dt);
         hungerT += dt;
         if(hungerT>=30){hungerT=0; hunger=Math.max(0,hunger-1); drawHunger();}
