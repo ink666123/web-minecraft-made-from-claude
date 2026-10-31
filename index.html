@@ -89,7 +89,7 @@ body, html { width: 100%; height: 100%; overflow: hidden; background-color: #78a
         <div class="mc-btn" id="btn-play">回到遊戲 (Click to Play)</div>
         <div class="mc-btn" id="btn-save">儲存遊戲</div>
         <div class="mc-btn" id="btn-exit">儲存並回主選單</div>
-        <div class="mc-btn" id="btn-info">WASD移動 | 空白鍵跳躍 | 按住左鍵挖掘 | 右鍵放置</div>
+        <div class="mc-btn" id="btn-info">WASD移動 | 空白鍵跳躍 | Shift 跑步 | Ctrl 蹲下 | 按住左鍵挖掘 | 右鍵放置</div>
     </div>
 </div>
 
@@ -117,7 +117,7 @@ if (ANTI_TAMPER) {
     }, 1000);
 }
 const BLOCK = { AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, COBBLESTONE: 4, WOOD: 5, PLANKS: 6, LEAVES: 7, BRICK: 8, SAND: 9, GLASS: 10, BEDROCK: 11, CRAFT: 12, HAY: 13, DOOR: 14, PATH: 15, FARM: 16, LAMP: 17, WATER: 18, CROP: 19, BED: 20 };
-BLOCK.COAL_ORE = 31; BLOCK.DIAMOND_ORE = 33; BLOCK.CHESTB = 34; BLOCK.LAVA = 35; BLOCK.OBS = 39; BLOCK.NETHERRACK = 40; BLOCK.SOULSAND = 41; BLOCK.GLOWSTONE = 42; BLOCK.PORTALA = 43; BLOCK.PORTALB = 44; BLOCK.GRAVEL = 45; BLOCK.TORCH = 46; BLOCK.IRON_ORE = 32; BLOCK.CROP1 = 21; BLOCK.CROP2 = 22; BLOCK.CROP3 = 23; for (let l = 1; l <= 7; l++) BLOCK['FW' + l] = 23 + l;
+BLOCK.COAL_ORE = 31; BLOCK.DIAMOND_ORE = 33; BLOCK.CHESTB = 34; BLOCK.LAVA = 35; BLOCK.OBS = 39; BLOCK.NETHERRACK = 40; BLOCK.SOULSAND = 41; BLOCK.GLOWSTONE = 42; BLOCK.PORTALA = 43; BLOCK.PORTALB = 44; BLOCK.GRAVEL = 45; BLOCK.TORCH = 46; BLOCK.IRON_ORE = 32; BLOCK.CROP1 = 21; BLOCK.CROP2 = 22; BLOCK.CROP3 = 23; for (let l = 1; l <= 7; l++) BLOCK['FW' + l] = 23 + l; BLOCK.NBRICK = 47; BLOCK.BLACKSTONE = 48; BLOCK.GOLDB = 49; BLOCK.EFRAME = 50; BLOCK.EFRAME_EYE = 51; BLOCK.EPORTAL = 52; BLOCK.SBRICK = 53; BLOCK.ENDSTONE = 54;
 const isCrop = b => b === 19 || (b >= 21 && b <= 23), isW = b => b === 18 || (b >= 24 && b <= 30), wLvl = b => b === 18 ? 0 : b - 23;
 // ---- 音效系統（WebAudio 即時合成，不需任何外部音檔；按 N 可開關）----
 const { sfx, sfxAt, stepTick, feetMat, matOf, ambientTick, remoteBlockSnd } = (() => {
@@ -192,6 +192,10 @@ const { sfx, sfxAt, stepTick, feetMat, matOf, ambientTick, remoteBlockSnd } = ((
     function mobSnd(spec, v, pan) {
         const [type, kind = 'say'] = spec.split(':'), hu = kind === 'hurt', de = kind === 'death', r = .92 + Math.random() * .16, o = { pan };
         switch (type) {
+            case 'dragon':
+                tone((de ? 110 : hu ? 200 : 90) * r, de ? 30 : 50, de ? 1.8 : hu ? .5 : 1.1, 'sawtooth', .42 * v, { ...o, lp: 600, vib: [4, 5] }); noise(.6, 'lowpass', 500, 120, .8, .25 * v, { ...o }); break;
+            case 'enderman':
+                tone((hu ? 700 : 380) * r, hu ? 300 : 900, hu ? .4 : .5, 'sine', .22 * v, { ...o, vib: [22, 30] }); tone((hu ? 500 : 190) * r, hu ? 200 : 450, .45, 'triangle', .15 * v, { ...o, t: .05 }); break;
             case 'cow':
                 tone((de ? 150 : hu ? 190 : 120) * r, de ? 45 : hu ? 110 : 85, de ? .9 : hu ? .35 : .75, 'sawtooth', .28 * v, { ...o, lp: 800, vib: [5, 6] }); break;
             case 'sheep':
@@ -246,6 +250,7 @@ const { sfx, sfxAt, stepTick, feetMat, matOf, ambientTick, remoteBlockSnd } = ((
             case 'click': tone(900, 650, .04, 'square', .1 * v); break;
             case 'slot': tone(700, 600, .03, 'triangle', .1 * v); break;
             case 'portal': noise(.8, 'lowpass', 250, 3500, .9, .35 * v); tone(180, 520, .8, 'sine', .2 * v, { vib: [9, 18] }); break;
+            case 'boom': noise(1.2, 'lowpass', 900, 60, 1, .9 * v, { pan }); tone(80, 26, .9, 'sawtooth', .4 * v, { pan }); noise(.3, 'bandpass', 1500, 300, .8, .5 * v, { pan }); break;
             case 'mob': mobSnd(a, v, pan); break;
         }
     }
@@ -300,7 +305,7 @@ const { sfx, sfxAt, stepTick, feetMat, matOf, ambientTick, remoteBlockSnd } = ((
     document.addEventListener('click', e => { if (e.target.closest && e.target.closest('.mc-btn')) sfx('click'); }, true);
     return { sfx, sfxAt, stepTick, feetMat, matOf, ambientTick, remoteBlockSnd };
 })();
-const isPortal = b => b === 43 || b === 44, isL = b => b >= 35 && b <= 38, lLvl = b => b === 35 ? 0 : b - 35;
+const isPortal = b => b === 43 || b === 44 || b === 52, isNP = b => b === 43 || b === 44, isL = b => b >= 35 && b <= 38, lLvl = b => b === 35 ? 0 : b - 35;
 function liqH(b, ab) {   // 液面高度（0~1）：水 8 階、岩漿 4 階，與原版相同的階梯式深淺
     const w = isW(b); if (w ? isW(ab) : isL(ab)) return 1;
     const L = w ? wLvl(b) : lLvl(b);
@@ -319,8 +324,8 @@ function cornerH(gx, y, gz, cx, cz, fn) {   // 液面某個角落的高度：取
 function liqAt(x, y, z, fn) { const bx = Math.floor(x), by = Math.floor(y), bz = Math.floor(z), b = getBlockGlobal(bx, by, bz); return fn(b) && y < by + liqH(b, getBlockGlobal(bx, by + 1, bz)); }
 const waterActive = new Set(), cropSet = new Set();
 function wake(x, y, z) { if (y > 0 && y < 63) waterActive.add(x + ',' + y + ',' + z); }
-const ITEM = { COAL: 133, RABBIT: 107, IRON: 132, BREAD: 106, SEEDS: 131, HOE: 114, EMERALD: 130, PORK: 100, CHICKEN: 101, BEEF: 102, MUTTON: 103, WHEAT: 104, STICK: 105, PICKAXE: 110, AXE: 111, SHOVEL: 112, SWORD: 113, HELMET: 120, CHEST: 121, LEGS: 122, BOOTS: 123, DIAMOND: 134, DHELM: 124, DCHEST: 125, DLEGS: 126, DBOOTS: 127, SHIELD: 128, BUCKET: 135, WBUCKET: 136, LBUCKET: 137, FLINT: 138, FLINTSTEEL: 139 };
-const CHUNK_SIZE = 16, CHUNK_HEIGHT = 64; let RENDER_DISTANCE = 8; const NETHER_ZONE = 50000, NETHER_X0 = 100000;   // 地獄：位在 X≥50000 的遠方區域，傳送門以 1:8 換算座標   // 顯示距離（區塊數），可用 /rd 2~16 調整
+const ITEM = { COAL: 133, RABBIT: 107, IRON: 132, BREAD: 106, SEEDS: 131, HOE: 114, EMERALD: 130, PORK: 100, CHICKEN: 101, BEEF: 102, MUTTON: 103, WHEAT: 104, STICK: 105, PICKAXE: 110, AXE: 111, SHOVEL: 112, SWORD: 113, HELMET: 120, CHEST: 121, LEGS: 122, BOOTS: 123, DIAMOND: 134, DHELM: 124, DCHEST: 125, DLEGS: 126, DBOOTS: 127, SHIELD: 128, BUCKET: 135, WBUCKET: 136, LBUCKET: 137, FLINT: 138, FLINTSTEEL: 139 }; ITEM.EYE = 145; ITEM.PEARL = 146;
+const CHUNK_SIZE = 16, CHUNK_HEIGHT = 64; let RENDER_DISTANCE = 8; const NETHER_ZONE = 50000, NETHER_X0 = 100000, END_ZONE = -50000, END_X0 = -100000;   // 地獄：位在 X≥50000 的遠方區域，傳送門以 1:8 換算座標   // 顯示距離（區塊數），可用 /rd 2~16 調整
 
 function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 class PerlinNoise {
@@ -384,6 +389,10 @@ const BLOCK_UV = {
 BLOCK_UV[31] = Array(6).fill(UV.COAL); UV.HAY_SIDE = [3, 5]; UV.HAY_TOP = [4, 5]; BLOCK_UV[BLOCK.HAY] = [UV.HAY_SIDE, UV.HAY_SIDE, UV.HAY_TOP, UV.HAY_TOP, UV.HAY_SIDE, UV.HAY_SIDE]; BLOCK_UV[32] = Array(6).fill(UV.IRON); BLOCK_UV[33] = Array(6).fill(UV.DIA); UV.LAVA = [5, 4]; UV.OBS = [1, 4]; for (let i = 35; i <= 38; i++) BLOCK_UV[i] = Array(6).fill(UV.LAVA); BLOCK_UV[39] = Array(6).fill(UV.OBS);
 UV.NR = [6, 0]; UV.SS = [6, 1]; UV.GL = [6, 2]; UV.PT = [6, 3]; UV.GR = [6, 4];
 BLOCK_UV[40] = Array(6).fill(UV.NR); BLOCK_UV[41] = Array(6).fill(UV.SS); BLOCK_UV[42] = Array(6).fill(UV.GL); BLOCK_UV[43] = BLOCK_UV[44] = Array(6).fill(UV.PT); BLOCK_UV[45] = Array(6).fill(UV.GR); BLOCK_UV[34] = [UV.CH_SIDE, UV.CH_SIDE, UV.CH_TOP, UV.CH_TOP, UV.CH_FRONT, UV.CH_SIDE];
+UV.NB = [6, 5]; UV.BS = [6, 6]; UV.GB = [6, 7]; UV.EF_TOP = [7, 0]; UV.EF_SIDE = [7, 1]; UV.EF_EYE = [7, 2]; UV.EP = [7, 3]; UV.SBR = [7, 4]; UV.ES = [7, 5];
+BLOCK_UV[47] = Array(6).fill(UV.NB); BLOCK_UV[48] = Array(6).fill(UV.BS); BLOCK_UV[49] = Array(6).fill(UV.GB);
+BLOCK_UV[50] = [UV.EF_SIDE, UV.EF_SIDE, UV.EF_TOP, UV.SBR, UV.EF_SIDE, UV.EF_SIDE]; BLOCK_UV[51] = [UV.EF_SIDE, UV.EF_SIDE, UV.EF_EYE, UV.SBR, UV.EF_SIDE, UV.EF_SIDE];
+BLOCK_UV[52] = Array(6).fill(UV.EP); BLOCK_UV[53] = Array(6).fill(UV.SBR); BLOCK_UV[54] = Array(6).fill(UV.ES);
 for (let l = 1; l <= 7; l++) BLOCK_UV[23 + l] = Array(6).fill(UV.WATER);
 
 // ---- 材質圖集（程序化像素材質）：可無縫拼接的雜訊 + 離散調色盤 + 邊緣打光 ----
@@ -518,6 +527,23 @@ function lavaFrame(f) {
         let v = Math.sin(a * 2 + t) * .4 + Math.sin(b * 2 - t) * .35 + Math.sin(a + b + t * 2) * .25 + Math.sin(a * 3 - b * 2 + t) * .2; v = (v + 1) / 2 * .85 + (rnd2(i, j, 40) - .5) * .12;
         return pick(LV, v);
     });
+}
+
+// 新方塊材質：地獄磚 / 磨製黑石磚 / 金磚 / 終界傳送門框架 / 終界傳送門 / 石磚 / 終界石
+{
+    const e = (i, j) => (i === 0 || j === 0) ? 1.08 : (i === 15 || j === 15) ? .86 : 1;
+    const nbN = tn(61), bsN = tn(62), gbN = tn(63), efN = tn(64), sbN = tn(65), esN = tn(66);
+    const NBP = PAL('#2a0f14', '#3a161c', '#4a1e24', '#5a2630'), BSP = PAL('#1b1920', '#26232c', '#322f3a', '#403c48'), GBP = PAL('#e8b414', '#f2c92c', '#f8dc50', '#fff08a');
+    const SBP = PAL('#6a6a6a', '#797979', '#868686', '#939393'), ESP = PAL('#c8c88a', '#d8d89c', '#e6e6ae', '#f0f0c0');
+    paintTile(6, 5, (i, j) => { if ((j & 3) === 0 || ((i + (((j >> 2) & 1) * 4)) & 7) === 0) return hexRGB('#1e0a0e'); return shade(pick(NBP, nbN(i, j) * .8 + rnd2(i, j, 61) * .3), e(i, j)); });
+    paintTile(6, 6, (i, j) => { if ((j & 7) === 0 || ((i + (((j >> 3) & 1) * 8)) & 15) === 0) return hexRGB('#0f0e13'); let c = pick(BSP, bsN(i, j) * .8 + rnd2(i, j, 62) * .3); if (rnd2(i, j, 67) > .985) c = hexRGB('#c9a23c'); return shade(c, e(i, j)); });
+    paintTile(6, 7, (i, j) => { const edge = i === 0 || j === 0 ? 1 : i === 15 || j === 15 ? -1 : 0; let c = pick(GBP, gbN(i, j) * .7 + rnd2(i, j, 63) * .25); if (edge === 1) c = hexRGB('#fff6b0'); else if (edge === -1) c = hexRGB('#c08a0a'); else if (i > 3 && i < 12 && j > 3 && j < 12 && (i === 4 || j === 4)) c = shade(c, 1.12); return c; });
+    paintTile(7, 0, (i, j) => { const d = Math.max(Math.abs(i - 7.5), Math.abs(j - 7.5)); if (d > 6.5) return hexRGB('#1a3a2c'); if (d < 2.6) return hexRGB('#06150e'); return shade(pick(PAL('#2c7a58', '#348a64', '#3c9a70'), efN(i, j)), e(i, j)); });
+    paintTile(7, 1, (i, j) => { let c = pick(PAL('#cfcf94', '#dcdca4', '#bdbd82'), efN(i, j) * .8 + rnd2(i, j, 64) * .3); if (i === 0 || i === 15 || j === 0) c = shade(c, .78); if (j > 11) c = shade(c, .85); return shade(c, e(i, j)); });
+    paintTile(7, 2, (i, j) => { const dx = i - 7.5, dy = j - 7.5, d = Math.hypot(dx, dy); if (Math.max(Math.abs(dx), Math.abs(dy)) > 6.5) return hexRGB('#1a3a2c'); if (d < 1.6) return hexRGB('#04120c'); if (d < 3.2) return hexRGB('#7ff0c8'); if (d < 4.4) return hexRGB('#1f9e78'); return shade(pick(PAL('#2c7a58', '#348a64', '#3c9a70'), efN(i, j)), e(i, j)); });
+    paintTile(7, 3, (i, j) => { const s = rnd2(i, j, 68); if (s > .93) return [190, 255, 235, 235]; if (s > .86) return [110, 90, 220, 235]; const v = .5 + .5 * Math.sin((i * 1.7 + j * 1.3) * .6 + efN(i, j) * 5); return [6 + v * 14, 14 + v * 26, 30 + v * 44, 235]; });
+    paintTile(7, 4, (i, j) => { if ((j & 3) === 0 || ((i + (((j >> 2) & 1) * 4)) & 7) === 0) return hexRGB('#4c4c4c'); let c = pick(SBP, sbN(i, j) * .8 + rnd2(i, j, 65) * .3); if (rnd2(i, j, 69) > .93) c = hexRGB('#5d7a4c'); return shade(c, e(i, j)); });
+    paintTile(7, 5, (i, j) => shade(pick(ESP, esN(i, j) * .8 + rnd2(i, j, 66) * .3), e(i, j)));
 }
 waterFrame(0); lavaFrame(0);
 
@@ -655,7 +681,7 @@ let _wf = 0; setInterval(() => { _wf = (_wf + 1) % 8; waterFrame(_wf); lavaFrame
 const ITEM_PORK = ITEM.PORK, MAX_STACK = 64;
 const NAMES = {[BLOCK.GRASS]:'草方塊',[BLOCK.DIRT]:'泥土',[BLOCK.STONE]:'石頭',[BLOCK.COBBLESTONE]:'圓石',[BLOCK.WOOD]:'原木',[BLOCK.PLANKS]:'木板',[BLOCK.LEAVES]:'樹葉',[BLOCK.BRICK]:'磚塊',[BLOCK.SAND]:'沙子',[BLOCK.GLASS]:'玻璃',[BLOCK.CRAFT]:'合成台',[BLOCK.HAY]:'乾草捆',[ITEM.PORK]:'熟豬肉',[ITEM.CHICKEN]:'熟雞肉',[ITEM.BEEF]:'熟牛肉',[ITEM.MUTTON]:'熟羊肉',[ITEM.WHEAT]:'小麥',[ITEM.EMERALD]:'綠寶石',[ITEM.SEEDS]:'小麥種子',[ITEM.BREAD]:'麵包',[ITEM.IRON]:'鐵錠',[ITEM.RABBIT]:'熟兔肉',[ITEM.HOE]:'石鋤',[BLOCK.BED]:'床',[BLOCK.PATH]:'土徑',[BLOCK.FARM]:'耕地',[BLOCK.LAMP]:'燈',[ITEM.STICK]:'木棒',[ITEM.PICKAXE]:'石鎬',[ITEM.AXE]:'石斧',[ITEM.SHOVEL]:'石鏟',[ITEM.SWORD]:'石劍',[ITEM.HELMET]:'鐵頭盔',[ITEM.CHEST]:'鐵胸甲',[ITEM.LEGS]:'鐵護腿',[ITEM.BOOTS]:'鐵靴子'};
 [['木製','石製','鐵製','鑽石']].forEach(ts => [140, 110, 150, 160].forEach((b, t) => ['鎬','斧','鏟','劍','鋤'].forEach((k, i) => NAMES[b + i] = ts[t] + k)));
-NAMES[31] = '煤炭礦'; NAMES[32] = '鐵礦石'; NAMES[ITEM.COAL] = '煤炭'; Object.assign(NAMES, { 33: '鑽石礦', 34: '箱子', [ITEM.DIAMOND]: '鑽石', [ITEM.DHELM]: '鑽石頭盔', [ITEM.DCHEST]: '鑽石胸甲', [ITEM.DLEGS]: '鑽石護腿', [ITEM.DBOOTS]: '鑽石靴子', [ITEM.SHIELD]: '盾牌', 35: '岩漿', 39: '黑曜石', 135: '桶子', 136: '水桶', 137: '岩漿桶', 40: '地獄岩', 41: '靈魂沙', 42: '螢石', 45: '礫石', 138: '燧石', 139: '打火石' });
+NAMES[31] = '煤炭礦'; NAMES[32] = '鐵礦石'; NAMES[ITEM.COAL] = '煤炭'; Object.assign(NAMES, { 33: '鑽石礦', 34: '箱子', [ITEM.DIAMOND]: '鑽石', [ITEM.DHELM]: '鑽石頭盔', [ITEM.DCHEST]: '鑽石胸甲', [ITEM.DLEGS]: '鑽石護腿', [ITEM.DBOOTS]: '鑽石靴子', [ITEM.SHIELD]: '盾牌', 35: '岩漿', 39: '黑曜石', 135: '桶子', 136: '水桶', 137: '岩漿桶', 40: '地獄岩', 41: '靈魂沙', 42: '螢石', 45: '礫石', 138: '燧石', 139: '打火石', 145: '終界之眼', 146: '終界珍珠', 47: '地獄磚', 48: '磨製黑石磚', 49: '金磚', 50: '終界傳送門框架', 51: '終界傳送門框架（已放眼）', 52: '終界傳送門', 53: '石磚', 54: '終界石' });
 const slots = Array(36).fill(null);
 const craftGrid = Array(4).fill(null);
 let tableGrid = Array(9).fill(null), tableOpen = false;
@@ -693,6 +719,7 @@ RECIPES_3.push({ p: ['III','I I'], k: { I: _D }, out: { id: ITEM.DHELM, n: 1 } }
     const o = i === 3 ? b + 3 : i === 4 ? b + 4 : b + i; RECIPES_3.push({ p, k: { C: m, S: _S }, out: { id: o, n: 1 } });
 }));
 
+RECIPES_3.push({ in: { [ITEM.PEARL]: 1, [ITEM.FLINT]: 1 }, out: { id: ITEM.EYE, n: 1 } });   // 終界之眼：終界珍珠 + 燧石（珍珠只有終界使者會掉）
 const TOOLS = {}; [[140, 0], [110, 1], [150, 2], [160, 3]].forEach(([b, t]) => ['pick', 'axe', 'shovel', 'sword', 'hoe'].forEach((k, i) => TOOLS[b + i] = { kind: k, tier: t }));
 const NEED_PICK = { 3: 0, 4: 0, 8: 0, 31: 0, 32: 1, 33: 2, 39: 3, 40: 0 };
 function toolDmg() { const T = TOOLS[slots[currentSlot]?.id]; return T ? (T.kind === 'sword' ? [5, 6, 7, 8] : [4, 5, 6, 7])[T.tier] : 3; }
@@ -870,6 +897,8 @@ function iconCanvas(id) {
     else if (id === ITEM.SEEDS) { for (const [x,y] of [[3,9],[8,5],[6,11],[10,9],[5,4],[11,3],[12,7],[2,5]]) { g.fillStyle='#7aa23a'; g.fillRect(x,y,2,1); g.fillStyle='#3d5a1c'; g.fillRect(x,y+1,2,1); g.fillStyle='#b4d466'; g.fillRect(x,y,1,1); } }
     else if (id === ITEM.HOE) { g.fillStyle='#6e502c'; for (let i=0;i<12;i++) g.fillRect(2+i,13-i,2,2); g.fillStyle='#888'; g.fillRect(8,2,6,2); g.fillRect(12,2,2,5); }
     else if (id === BLOCK.TORCH) { g.fillStyle = '#4a2f12'; g.fillRect(7, 6, 2, 9); g.fillStyle = '#7a5226'; g.fillRect(7, 6, 1, 9); g.fillStyle = '#e8590c'; g.fillRect(6, 2, 4, 4); g.fillStyle = '#ffb02e'; g.fillRect(7, 3, 2, 3); g.fillStyle = '#fff1a8'; g.fillRect(7, 4, 1, 1); }
+    else if (id === ITEM.PEARL) { g.fillStyle = '#06322e'; g.fillRect(5, 3, 6, 10); g.fillRect(3, 5, 10, 6); g.fillRect(4, 4, 8, 8); g.fillStyle = '#0f6b60'; g.fillRect(5, 5, 6, 6); g.fillRect(4, 6, 8, 4); g.fillStyle = '#2fb59a'; g.fillRect(5, 5, 4, 4); g.fillStyle = '#b8fff0'; g.fillRect(6, 5, 2, 2); }
+    else if (id === ITEM.EYE) { g.fillStyle = '#0b3d2e'; g.fillRect(5, 3, 6, 10); g.fillRect(3, 5, 10, 6); g.fillRect(4, 4, 8, 8); g.fillStyle = '#1f9e78'; g.fillRect(5, 5, 6, 6); g.fillRect(4, 6, 8, 4); g.fillStyle = '#7ff0c8'; g.fillRect(6, 6, 4, 4); g.fillStyle = '#04120c'; g.fillRect(7, 7, 2, 2); g.fillStyle = '#e6fff6'; g.fillRect(6, 6, 1, 1); }
     else if (id === ITEM.FLINT) { g.fillStyle = '#1b1b20'; g.fillRect(4, 8, 8, 5); g.fillRect(6, 5, 5, 4); g.fillRect(8, 3, 2, 3); g.fillStyle = '#44444e'; g.fillRect(5, 9, 5, 2); g.fillRect(7, 6, 2, 2); g.fillStyle = '#8e8e9c'; g.fillRect(6, 9, 1, 1); g.fillRect(8, 6, 1, 1); }
     else if (id === ITEM.FLINTSTEEL) { g.fillStyle = '#26262b'; g.fillRect(8, 2, 5, 7); g.fillStyle = '#4c4c56'; g.fillRect(9, 3, 3, 4); g.fillStyle = '#9a9aa4'; g.fillRect(2, 8, 9, 5); g.fillStyle = '#6a6a74'; g.fillRect(3, 9, 7, 3); g.fillStyle = '#d8d8e0'; g.fillRect(2, 8, 9, 1); }
     else if (FOOD[id]) meatIcon(g, id);
@@ -1014,6 +1043,20 @@ function paint(el, st) {
     el.lastChild.textContent = st && st.n > 1 ? st.n : '';
     el.title = st ? NAMES[st.id] || '' : '';
 }
+const creativePanel = document.createElement('div'); creativePanel.id = 'creative-panel';
+creativePanel.style.cssText = 'background:#c6c6c6;border:3px solid #000;border-top-color:#fff;border-left-color:#fff;padding:12px;margin-left:12px;color:#404040;font-size:20px;max-height:86vh;overflow-y:auto;display:none';
+creativePanel.innerHTML = '<div class="inv-title">創造模式物品（左鍵一組、右鍵一個；手上有東西時點這裡＝丟掉）</div><div id="creative-grid" style="display:grid;grid-template-columns:repeat(9,44px)"></div>';
+invScreen.appendChild(creativePanel); let creativeBuilt = false;
+function buildCreative() {
+    if (creativeBuilt) return; creativeBuilt = true; const s = new Set();
+    Object.keys(BLOCK_UV).forEach(k => { const id = +k; if (id > 0 && !isW(id) && !isL(id) && !isCrop(id) && !isPortal(id)) s.add(id); });
+    Object.keys(NAMES).forEach(k => { const id = +k; if (id >= 100) s.add(id); }); Object.values(ITEM).forEach(id => s.add(id)); Object.keys(TOOLS).forEach(k => s.add(+k));
+    const grid = creativePanel.querySelector('#creative-grid');
+    [...s].sort((a, b) => a - b).forEach(id => {
+        const el = mkSlot(grid, 'inv-slot', null, 0); paint(el, { id, n: 1 });
+        el.addEventListener('mousedown', ev => { ev.preventDefault(); ev.stopPropagation(); if (cursor) cursor = null; else cursor = { id, n: ev.button === 2 || TOOLS[id] || (id >= 120 && id <= 128) ? 1 : MAX_STACK }; sfx('slot'); updateHotbar(); });
+    });
+}
 function findRecipeIn(grid, recipes) {
     const w = Math.round(Math.sqrt(grid.length)), cnt = {}; let r0 = 9, r1 = -1, c0 = 9, c1 = -1;
     grid.forEach((x, i) => { if (x) { cnt[x.id] = (cnt[x.id] || 0) + 1; const r = (i / w) | 0, c = i % w; r0 = Math.min(r0, r); r1 = Math.max(r1, r); c0 = Math.min(c0, c); c1 = Math.max(c1, c); } });
@@ -1119,10 +1162,10 @@ function outClick(shift) {
 function selectSlot(i) { sfx('slot'); hotEls[currentSlot].classList.remove('active'); currentSlot = i; hotEls[i].classList.add('active'); }
 selectSlot(0);
 window.addEventListener('wheel', e => { if (document.pointerLockElement) selectSlot((currentSlot + (e.deltaY > 0 ? 1 : 8)) % 9); });
-function useSel() { const s = slots[currentSlot]; if (s && --s.n <= 0) slots[currentSlot] = null; updateHotbar(); }
+function useSel() { if (godMode) return; const s = slots[currentSlot]; if (s && --s.n <= 0) slots[currentSlot] = null; updateHotbar(); }
 
 function openInv() {
-    sfx('click');
+    sfx('click'); creativePanel.style.display = godMode ? 'block' : 'none'; if (godMode) buildCreative();
     invOpen = true; mouseDown = false; for (const k in keys) keys[k] = false;
     document.exitPointerLock(); invScreen.classList.add('open'); updateHotbar();
 }
@@ -1256,7 +1299,9 @@ function updateDrops(dt) {
 const HARDNESS = {[BLOCK.CRAFT]:2,[BLOCK.HAY]:1,[BLOCK.DOOR]:2,[BLOCK.GRASS]:.6,[BLOCK.DIRT]:.6,[BLOCK.SAND]:.5,[BLOCK.LEAVES]:.3,[BLOCK.WOOD]:2,[BLOCK.PLANKS]:1.5,[BLOCK.COBBLESTONE]:3,[BLOCK.STONE]:3.5,[BLOCK.BRICK]:3,[BLOCK.GLASS]:.4,[BLOCK.BEDROCK]:Infinity,[BLOCK.WATER]:Infinity,[BLOCK.CROP]:.1,[21]:.1,[22]:.1,[23]:.1,[24]:Infinity,[25]:Infinity,[26]:Infinity,[27]:Infinity,[28]:Infinity,[29]:Infinity,[30]:Infinity,[BLOCK.BED]:.4,[BLOCK.PATH]:.6,[BLOCK.FARM]:.6,[BLOCK.LAMP]:.3};
 const DROPS = {[BLOCK.CRAFT]:BLOCK.CRAFT,[BLOCK.HAY]:ITEM.WHEAT,[BLOCK.GRASS]:BLOCK.DIRT,[BLOCK.STONE]:BLOCK.COBBLESTONE,[BLOCK.GLASS]:BLOCK.AIR,[BLOCK.CROP]:ITEM.WHEAT,[BLOCK.PATH]:BLOCK.DIRT,[BLOCK.FARM]:BLOCK.DIRT};
 HARDNESS[46] = .05; NAMES[46] = '火把'; HARDNESS[31] = 3; HARDNESS[32] = 3.5; DROPS[31] = ITEM.COAL; DROPS[32] = ITEM.IRON; HARDNESS[33] = 4; HARDNESS[39] = 10; HARDNESS[40] = 1; HARDNESS[41] = .8; HARDNESS[42] = .5; HARDNESS[45] = .6; HARDNESS[43] = HARDNESS[44] = Infinity; for (let i = 35; i <= 38; i++) HARDNESS[i] = Infinity; HARDNESS[34] = 2.5; DROPS[33] = ITEM.DIAMOND;
+HARDNESS[47] = 2; HARDNESS[48] = 3; HARDNESS[49] = 3; HARDNESS[50] = HARDNESS[51] = HARDNESS[52] = Infinity; HARDNESS[53] = 2.5; HARDNESS[54] = 2; NEED_PICK[47] = NEED_PICK[48] = NEED_PICK[53] = NEED_PICK[54] = 0; NEED_PICK[49] = 1;
 let hp = 20, hunger = 20, lastHurt = 0, regenT = 0, hungerT = 0;
+let respawnPoint = null, dragonDefeated = false;   // 床的重生點、終界龍是否已被擊敗
 const heartsEl = document.getElementById('hearts'), hungerEl = document.getElementById('hunger'), hurtEl = document.getElementById('hurt');
 function drawHearts() {
     let h = '';
@@ -1368,7 +1413,7 @@ function villageAt(rx, rz) {
     }
     villageCache.set(k, v); return v;
 }
-function villageFor(cx, cz) { if (cx * CHUNK_SIZE >= NETHER_ZONE) return null; return villageAt(Math.floor((cx * CHUNK_SIZE + 8 + VREG / 2) / VREG), Math.floor((cz * CHUNK_SIZE + 8 + VREG / 2) / VREG)); }
+function villageFor(cx, cz) { if (cx * CHUNK_SIZE >= NETHER_ZONE || cx * CHUNK_SIZE <= END_ZONE) return null; return villageAt(Math.floor((cx * CHUNK_SIZE + 8 + VREG / 2) / VREG), Math.floor((cz * CHUNK_SIZE + 8 + VREG / 2) / VREG)); }
 // ---- 立體農作物：每格 9 株獨立麥桿（莖、葉、麥穗皆為實體方塊）----
 const torchPos = new Map();   // 火把座標登記：供光源使用
 function addTorch(O, bx, by, bz) {   // 火把：木棍 + 三層火焰（滿亮度，看起來會發光）
@@ -1399,6 +1444,130 @@ function addCrop(O, block, bx, by, bz, wx, wy, wz, dk) {
             cropBox(O, bx + cx - .05, by + h - .12, bz + cz - .05, .1, .035, .1, [.66, .54, .16], dk);
             cropBox(O, bx + cx - .012, by + h, bz + cz - .012, .024, .08, .024, [.95, .85, .45], dk);
         }
+    }
+}
+// ---- 結構生成：地獄堡壘、豬布林堡壘（地獄）、終界傳送門要塞（主世界地下）----
+// 全部是「世界座標的確定性函式」：每個區塊只算自己的那一塊，結構跨區塊也能無縫接起來；FREG/BREG/STREG 都是 16 的倍數，區塊不會跨區域
+const FREG = 96, BREG = 160, STREG = 512;
+const sHash = (a, b, s) => { let h = (Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263) ^ Math.imul((s | 0) + 1, 1274126177) ^ (SEED | 0)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+const fortressInfo = (rx, rz) => sHash(rx, rz, 11) > .6 ? null : { x: rx * FREG + 48, z: rz * FREG + 48, y0: 24 + Math.floor(sHash(rx, rz, 12) * 9) };
+const bastionInfo = (rx, rz) => sHash(rx, rz, 21) > .55 ? null : { x: rx * BREG + 80 + Math.floor((sHash(rx, rz, 22) - .5) * 60), z: rz * BREG + 80 + Math.floor((sHash(rx, rz, 23) - .5) * 60), y0: 27 + Math.floor(sHash(rx, rz, 24) * 7) };
+const strongInfo = (rx, rz) => sHash(rx, rz, 31) > .75 ? null : { x: rx * STREG + 100 + Math.floor(sHash(rx, rz, 32) * 300), z: rz * STREG + 100 + Math.floor(sHash(rx, rz, 33) * 300), y0: 13 };
+function locateStruct(kind, px, pz) {
+    const R = kind === 'fortress' ? FREG : kind === 'bastion' ? BREG : STREG, f = kind === 'fortress' ? fortressInfo : kind === 'bastion' ? bastionInfo : strongInfo;
+    const r0 = Math.floor(px / R), r1 = Math.floor(pz / R); let best = null, bd = 1e18;
+    for (let rx = r0 - 4; rx <= r0 + 4; rx++) for (let rz = r1 - 4; rz <= r1 + 4; rz++) { const s = f(rx, rz); if (!s) continue; const d = (s.x - px) ** 2 + (s.z - pz) ** 2; if (d < bd) { bd = d; best = { x: s.x, y: s.y0, z: s.z }; } }
+    return best;
+}
+const structMobs = new Map();
+function structMobTick() {   // 玩家走近豬布林堡壘、周圍區塊都載入後，才在庭院生出僵屍豬人守衛（避免生在還沒載入的地面上掉下去）
+    if (isClient) return;
+    for (const s of structMobs.values()) {
+        if (s.done) continue; const dx = s.x - player.pos.x, dz = s.z - player.pos.z; if (dx * dx + dz * dz > 2500) continue;
+        if (!chunkLoaded(s.x - 12, s.z - 12) || !chunkLoaded(s.x + 12, s.z + 12) || !chunkLoaded(s.x - 12, s.z + 12) || !chunkLoaded(s.x + 12, s.z - 12)) continue;
+        s.done = true; for (const [a, b] of [[10.5, .5], [-9.5, .5], [.5, -9.5], [.5, 10.5]]) makeMob('pigman', s.x + a, s.y + 1, s.z + b);
+    }
+}
+function fillChestAt(wx, y, wz, kind) {   // 箱子戰利品：以座標當亂數種子，同一個箱子永遠一樣；已被玩家動過（chestData 已有）就不覆蓋
+    const key = wx + ',' + y + ',' + wz; if (chestData.has(key)) return;
+    const r = mulberry32((SEED ^ Math.imul(wx, 73856093) ^ Math.imul(y, 19349663) ^ Math.imul(wz, 83492791)) >>> 0), items = [];
+    const add = (id, lo, hi, p) => { if (r() < (p === undefined ? 1 : p)) items.push({ id, n: lo + Math.floor(r() * (hi - lo + 1)) }); };
+    if (kind === 'fort') { add(ITEM.DIAMOND, 1, 2, .45); add(ITEM.IRON, 2, 6, .9); add(ITEM.COAL, 3, 8, .7); add(BLOCK.GOLDB, 1, 2, .5); add(BLOCK.NBRICK, 6, 16, .9); add(ITEM.FLINT, 1, 3, .5); add(ITEM.BREAD, 2, 5, .6); }
+    else if (kind === 'bast') { add(BLOCK.GOLDB, 3, 8, 1); add(ITEM.DIAMOND, 1, 3, .7); add(ITEM.EMERALD, 1, 4, .5); add(ITEM.IRON, 3, 8, .8); add(BLOCK.BLACKSTONE, 8, 20, .9); add(ITEM.DBOOTS, 1, 1, .15); add(ITEM.DHELM, 1, 1, .1); add(ITEM.PORK, 3, 8, .6); }
+    else { add(ITEM.DIAMOND, 1, 3, .6); add(ITEM.IRON, 3, 9, .9); add(ITEM.BREAD, 3, 8, .9); add(ITEM.COAL, 4, 10, .8); add(BLOCK.SBRICK, 8, 16, .6); }
+    const arr = Array(27).fill(null); for (const it of items) { let i = Math.floor(r() * 27), t = 0; while (arr[i] && t++ < 27) i = (i + 1) % 27; arr[i] = it; }
+    chestData.set(key, arr);
+}
+const nbPut = (ch, x, y, z, b) => { if (y >= 1 && y <= 60) ch.setBlock(x, y, z, b); };
+function nbPillar(ch, x, y, z, b) { for (let yy = y; yy >= 13; yy--) { const c = ch.getBlock(x, yy, z); if (c !== BLOCK.AIR && !(c >= 35 && c <= 38)) break; ch.setBlock(x, yy, z, b); } }
+const FTOWERS = [[6, 48, 1, 0], [90, 48, -1, 0], [48, 6, 0, 1], [48, 90, 0, -1]];
+function genFortress(ch, ox, oz) {   // 地獄堡壘：十字形廊道（有頂的走廊與開放的橋交替）＋中央大廳＋四端塔樓，箱子在大廳與塔樓
+    const rx = Math.floor(ox / FREG), rz = Math.floor(oz / FREG), F = fortressInfo(rx, rz); if (!F) return;
+    const y0 = F.y0, bx = rx * FREG, bz = rz * FREG, A = BLOCK.AIR, NB = BLOCK.NBRICK;
+    for (let x = 0; x < 16; x++) for (let z = 0; z < 16; z++) {
+        const lx = ox + x - bx, lz = oz + z - bz, dx = lx - 48, dz = lz - 48, P = (h, b) => nbPut(ch, x, y0 + h, z, b);
+        if (Math.abs(dx) <= 8 && Math.abs(dz) <= 8) {   // 中央大廳 17×17
+            const ax = Math.abs(dx), az = Math.abs(dz);
+            if (ax === 8 || az === 8) {
+                const open = (ax === 8 && az <= 2) || (az === 8 && ax <= 2), oc = ax === 8 ? az : ax;
+                P(0, NB); for (let h = 1; h <= 6; h++) P(h, open && h <= 3 ? A : (!open && (h === 3 || h === 4) && oc % 4 === 2) ? A : NB);
+                P(7, NB); P(8, ((ax + az) & 1) ? NB : A);
+            } else {
+                P(0, ((((dx * 3 + dz * 5) % 7) + 7) % 7 === 0) ? BLOCK.SOULSAND : NB);
+                const pil = ax === 4 && az === 4; for (let h = 1; h <= 6; h++) P(h, pil ? (h === 6 ? BLOCK.GLOWSTONE : NB) : A);
+                P(7, NB);
+                if (dx === 0 && dz === 0) { P(1, BLOCK.CHESTB); fillChestAt(ox + x, y0 + 1, oz + z, 'fort'); }
+            }
+            if ((dx & 3) === 0 && (dz & 3) === 0) nbPillar(ch, x, y0 - 1, z, NB);
+            continue;
+        }
+        let tw = null;
+        for (const T of FTOWERS) { const a = lx - T[0], c = lz - T[1]; if (Math.abs(a) <= 3 && Math.abs(c) <= 3) { tw = [a, c, T[2], T[3]]; break; } }
+        if (tw) {   // 塔樓 7×7
+            const [tx, tz, sx, sz] = tw, ax = Math.abs(tx), az = Math.abs(tz), wall = ax === 3 || az === 3;
+            const door = (sx !== 0 && tx === sx * 3 && az <= 1) || (sz !== 0 && tz === sz * 3 && ax <= 1);
+            P(0, NB);
+            if (wall) { for (let h = 1; h <= 8; h++) P(h, (door && h <= 3) ? A : (!door && (h === 5 || h === 6) && ((ax === 3 && tz === 0) || (az === 3 && tx === 0))) ? A : NB); P(9, NB); P(10, ((tx + tz) & 1) === 0 ? NB : A); }
+            else { for (let h = 1; h <= 8; h++) P(h, A); P(9, NB); if (tx === -2 * sx && tz === -2 * sz) { P(1, BLOCK.CHESTB); fillChestAt(ox + x, y0 + 1, oz + z, 'fort'); } if (tx === 0 && tz === 0) P(8, BLOCK.GLOWSTONE); }
+            if (ax === 3 && az === 3) nbPillar(ch, x, y0 - 1, z, NB);
+            continue;
+        }
+        let k = -1, seg = 0;
+        if (Math.abs(dz) <= 2 && lx >= 6 && lx <= 90) { k = dz + 2; seg = lx; } else if (Math.abs(dx) <= 2 && lz >= 6 && lz <= 90) { k = dx + 2; seg = lz; }
+        if (k < 0) continue;
+        const wk = k === 0 || k === 4, enclosed = Math.floor(seg / 12) % 2 === 0;   // 12 格有頂走廊 / 12 格開放的橋
+        P(0, NB);
+        if (enclosed) { for (let h = 1; h <= 3; h++) P(h, wk ? ((h === 2 && seg % 4 === 2) ? A : NB) : A); P(4, NB); P(5, A); }
+        else { P(1, wk ? NB : A); P(2, wk && seg % 2 === 0 ? NB : A); for (let h = 3; h <= 5; h++) P(h, A); }
+        if (wk && seg % 6 === 0) nbPillar(ch, x, y0 - 1, z, NB);
+    }
+}
+function genBastion(ch, ox, oz) {   // 豬布林堡壘：黑石外牆＋四角塔＋岩漿護城河＋中央寶庫（金磚與 4 個箱子）
+    const rx = Math.floor(ox / BREG), rz = Math.floor(oz / BREG), B = bastionInfo(rx, rz); if (!B) return;
+    const cx = B.x, cz = B.z, y0 = B.y0, A = BLOCK.AIR, BS = BLOCK.BLACKSTONE, G = BLOCK.GOLDB;
+    if (cx + 12 < ox || cx - 12 >= ox + 16 || cz + 12 < oz || cz - 12 >= oz + 16) return;
+    if (!structMobs.has(cx + ',' + cz)) structMobs.set(cx + ',' + cz, { x: cx, y: y0, z: cz, done: false });
+    for (let x = 0; x < 16; x++) for (let z = 0; z < 16; z++) {
+        const dx = ox + x - cx, dz = oz + z - cz, ax = Math.abs(dx), az = Math.abs(dz), r = Math.max(ax, az); if (r > 12) continue;
+        const P = (h, b) => nbPut(ch, x, y0 + h, z, b);
+        for (let h = 0; h <= 14; h++) P(h, A);
+        P(-1, BS); if (r === 12 || (ax % 6 === 0 && az % 6 === 0)) nbPillar(ch, x, y0 - 2, z, BS);
+        if (ax >= 10 && az >= 10) { for (let h = 0; h <= 9; h++) P(h, BS); P(10, (ax === 11 && az === 11) ? BLOCK.GLOWSTONE : BS); }   // 四角塔
+        else if (r === 12) { const gate = dz === 12 && ax <= 2; for (let h = 0; h <= 7; h++) P(h, (gate && h >= 1 && h <= 4) ? A : BS); P(8, ((ax + az) & 1) ? BS : A); }   // 外牆（南面有大門）
+        else if (r >= 10) P(0, BS);   // 外庭院
+        else if (r >= 8) P(0, (dz > 0 && ax <= 1) ? BS : BLOCK.LAVA);   // 岩漿護城河，南面留一條橋
+        else if (r === 7) P(0, BS);
+        else {   // 中央寶庫
+            const door = dz === 6 && ax <= 1;
+            P(0, r <= 1 ? G : BS);
+            if (r === 6) { for (let h = 1; h <= 8; h++) P(h, (door && h <= 3) ? A : (!door && (h === 4 || h === 5) && ((ax === 6 && dz === 0) || (az === 6 && dx === 0))) ? A : BS); P(9, BS); P(10, ((ax + az) & 1) ? BS : A); }
+            else {
+                if (r <= 1) P(1, G);
+                if (ax === 3 && az === 3) for (let h = 1; h <= 8; h++) P(h, h === 8 ? BLOCK.GLOWSTONE : BS);
+                if (ax === 4 && az === 4) { P(1, BLOCK.CHESTB); fillChestAt(ox + x, y0 + 1, oz + z, 'bast'); }
+                P(9, BS);
+            }
+        }
+    }
+}
+function genStronghold(ch, ox, oz) {   // 主世界地下的石磚要塞：13×13 的房間，中央是終界傳送門框架（12 格，約一成已放好眼睛）；南面有一條短走廊
+    const rx = Math.floor(ox / STREG), rz = Math.floor(oz / STREG), S = strongInfo(rx, rz); if (!S) return;
+    const cx = S.x, cz = S.z, y0 = S.y0, A = BLOCK.AIR, SB = BLOCK.SBRICK;
+    if (cx + 7 < ox || cx - 7 >= ox + 16 || cz + 15 < oz || cz - 7 >= oz + 16) return;
+    for (let x = 0; x < 16; x++) for (let z = 0; z < 16; z++) {
+        const wx = ox + x, wz = oz + z, dx = wx - cx, dz = wz - cz, ax = Math.abs(dx), az = Math.abs(dz), P = (h, b) => nbPut(ch, x, y0 + h, z, b);
+        if (dz >= 8 && dz <= 15 && ax <= 2) {   // 走廊
+            P(-1, SB); P(4, SB); for (let h = 0; h <= 3; h++) P(h, ax === 2 ? SB : A);
+            continue;
+        }
+        const r = Math.max(ax, az); if (r > 7 || dz < -7) continue;
+        P(-1, SB);
+        if (r === 7) { const door = dz === 7 && ax <= 1; for (let h = 0; h <= 6; h++) P(h, (door && h <= 2) ? A : SB); continue; }
+        for (let h = 0; h <= 5; h++) P(h, A); P(6, SB);
+        if (ax === 5 && az === 5) for (let h = 0; h <= 5; h++) P(h, SB);
+        if ((ax === 5 && az === 0) || (az === 5 && ax === 0)) P(5, BLOCK.LAMP);
+        if (Math.max(ax, az) === 2 && !(ax === 2 && az === 2)) P(0, sHash(wx, wz, 34) < .1 ? BLOCK.EFRAME_EYE : BLOCK.EFRAME);   // 傳送門框架 12 格
+        if (ax === 6 && az === 0) { P(0, BLOCK.CHESTB); fillChestAt(wx, y0, wz, 'strong'); }
     }
 }
 class Chunk {
@@ -1455,6 +1624,7 @@ class Chunk {
             }
         }
         for (const [x, y0, z, n, s, t] of ops) for (let k = 0; k < n; k++) { const y = y0 + s * k; if (this.getBlock(x, y, z) !== BLOCK.AIR) break; this.setBlock(x, y, z, t); }
+        genFortress(this, ox, oz); genBastion(this, ox, oz);   // 地獄堡壘、豬布林堡壘
         if (rnd() < .14) {   // 殘破的黑曜石傳送門遺跡
             const lx = 3 + (rnd() * 8 | 0), lz = 3 + (rnd() * 10 | 0);
             for (let y = 16; y < 52; y++) {
@@ -1466,9 +1636,27 @@ class Chunk {
             }
         }
     }
+    genEnd(rnd) {   // 終界：浮空的終界石主島、10 根黑曜石柱、回主世界的出口傳送門、玩家抵達用的黑曜石平台
+        const ox = this.cx * CHUNK_SIZE, oz = this.cz * CHUNK_SIZE, N = noiseGen;
+        for (let x = 0; x < CHUNK_SIZE; x++) for (let z = 0; z < CHUNK_SIZE; z++) {
+            const wx = ox + x, wz = oz + z, dx = wx - END_X0, dz = wz, d = Math.hypot(dx, dz); if (d > 56) continue;
+            const nz = N.noise2D(wx * .08, wz * .08) * 2, top = Math.round(d < 32 ? 40 + nz * .4 : 40 - (d - 32) * .55 + nz), bot = Math.round(40 - Math.max(0, 50 - d) * .55 + nz);
+            for (let y = Math.max(1, bot); y <= Math.min(top, 62); y++) this.setBlock(x, y, z, BLOCK.ENDSTONE);
+            for (let k = 0; k < 10; k++) {
+                const a = (18 + 36 * k) * Math.PI / 180, px = END_X0 + Math.round(Math.cos(a) * 26), pz = Math.round(Math.sin(a) * 26), ddx = wx - px, ddz = wz - pz;
+                if (ddx * ddx + ddz * ddz > 5) continue;
+                const H = 10 + ((k * 7) % 5) * 3; for (let y = 36; y <= 40 + H; y++) this.setBlock(x, y, z, BLOCK.OBS);
+                if (ddx === 0 && ddz === 0) this.setBlock(x, 41 + H, z, BLOCK.GLOWSTONE);
+            }
+            if (d < 4) { const r = Math.max(Math.abs(dx), Math.abs(dz)); for (let y = 42; y <= 46; y++) this.setBlock(x, y, z, BLOCK.AIR);
+                if (r <= 1) { this.setBlock(x, 40, z, BLOCK.BEDROCK); this.setBlock(x, 41, z, BLOCK.EPORTAL); } else if (r === 2) { this.setBlock(x, 40, z, BLOCK.BEDROCK); this.setBlock(x, 41, z, BLOCK.BEDROCK); } }
+            if (Math.abs(wx - (END_X0 + 24)) <= 2 && Math.abs(wz) <= 2) { for (let y = 38; y <= 40; y++) this.setBlock(x, y, z, BLOCK.OBS); for (let y = 41; y <= 46; y++) this.setBlock(x, y, z, BLOCK.AIR); }
+        }
+    }
     generateTerrain() {
         const rnd = mulberry32((SEED ^ Math.imul(this.cx, 73856093) ^ Math.imul(this.cz, 19349663)) >>> 0);
         if (this.cx * CHUNK_SIZE >= NETHER_ZONE) { this.genNether(rnd); return; }
+        if (this.cx * CHUNK_SIZE <= END_ZONE) { this.genEnd(rnd); return; }
         const ox = this.cx * CHUNK_SIZE, oz = this.cz * CHUNK_SIZE, trees = [], N = noiseGen, V = villageFor(this.cx, this.cz), GYv = V ? V.gy : GY;
         for (let x = 0; x < CHUNK_SIZE; x++) for (let z = 0; z < CHUNK_SIZE; z++) {
             const wx = ox + x, wz = oz + z, biome = biomeAt(wx, wz);
@@ -1511,6 +1699,7 @@ class Chunk {
             for (let i = 1; i <= th; i++) this.setBlock(x, h + i, z, BLOCK.WOOD);
             this.setBlock(x, h, z, BLOCK.DIRT);
         }
+        genStronghold(this, ox, oz);
         buildVillage(this, ox, oz);
     }
     dispose() {
@@ -1534,6 +1723,16 @@ class Chunk {
             if (block === BLOCK.AIR) continue;
             if (block === BLOCK.TORCH) { addTorch(O, x, y, z); continue; }
             if (isCrop(block)) { addCrop(O, block, x, y, z, ox + x, y, oz + z, Math.min(1, .4 + y / 24)); continue; }
+            if (block === 52) {   // 終界傳送門：水平薄片
+                const pt = BLOCK_UV[52][0], pu0 = pt[0] / ATLAS_SIZE + eps, pu1 = (pt[0] + 1) / ATLAS_SIZE - eps, pv0 = 1 - (pt[1] + 1) / ATLAS_SIZE + eps, pv1 = 1 - pt[1] / ATLAS_SIZE - eps;
+                const q = [[0, 0, pu0, pv0], [0, 1, pu0, pv1], [1, 1, pu1, pv1], [1, 0, pu1, pv0]];
+                for (const side of [1, -1]) {
+                    const b0 = T.p.length / 3, vs = side === 1 ? q : [...q].reverse();
+                    for (const v of vs) { T.p.push(x + v[0], y + .75, z + v[1]); T.n.push(0, side, 0); T.c.push(1.6, 1.6, 1.6); T.u.push(v[2], v[3]); }
+                    T.i.push(b0, b0 + 1, b0 + 2, b0, b0 + 2, b0 + 3);
+                }
+                continue;
+            }
             if (isPortal(block)) {   // 傳送門：雙面薄平面，紫色半透明
                 const pt = BLOCK_UV[block][0], pu0 = pt[0] / ATLAS_SIZE + eps, pu1 = (pt[0] + 1) / ATLAS_SIZE - eps, pv0 = 1 - (pt[1] + 1) / ATLAS_SIZE + eps, pv1 = 1 - pt[1] / ATLAS_SIZE - eps;
                 const A = block === BLOCK.PORTALA, quad = A ? [[0,0,.5],[1,0,.5],[1,1,.5],[0,1,.5]] : [[.5,0,0],[.5,0,1],[.5,1,1],[.5,1,0]];
@@ -1556,7 +1755,7 @@ class Chunk {
                 const nx = x + face[0], ny = y + face[1], nz = z + face[2];
                 const nb = (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE)
                     ? this.getBlock(nx, ny, nz) : getBlockGlobal(ox + nx, ny, oz + nz);
-                if (!(nb === BLOCK.AIR || nb === BLOCK.LEAVES || isCrop(nb) || nb === BLOCK.TORCH || (nb === BLOCK.GLASS && block !== BLOCK.GLASS) || (isW(nb) && !isW(block)))) continue;
+                if (!(nb === BLOCK.AIR || nb === BLOCK.LEAVES || nb === 52 || isCrop(nb) || nb === BLOCK.TORCH || (nb === BLOCK.GLASS && block !== BLOCK.GLASS) || (isW(nb) && !isW(block)))) continue;
 
                 const base = g.p.length / 3;
                 const light = face[1] === -1 ? 0.5 : (face[0] !== 0 || face[2] !== 0) ? 0.75 : 1.0; const dk = (isL(block) ? 2.4 : Math.min(1, .4 + y / 24)) * (isW(block) ? .8 + .2 * hm : 1);
@@ -1692,6 +1891,11 @@ function hurt(n, fx, fz, quiet) {
     drawHearts(); if (hp <= 0) die();
 }
 function spawn() {
+    if (respawnPoint) {   // 有床：回到床上方；床被拆掉就回到世界出生點
+        const r = respawnPoint; player.pos.set(r.x + .5, r.y + 1, r.z + .5); player.vel.set(0, 0, 0); updateChunks(player.pos, true); flushAll();
+        if (getBlockGlobal(r.x, r.y, r.z) === BLOCK.BED) { let n = 0; while (checkCollision(player.pos) && n++ < 6) player.pos.y += 1; player.fallFrom = player.pos.y; return; }
+        respawnPoint = null; toast('你的床不見了，回到世界出生點');
+    }
     player.pos.set(8, 40, 2); player.vel.set(0, 0, 0);
     updateChunks(player.pos, true); flushAll();
     for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) if (getBlockGlobal(8, y, 2) !== BLOCK.AIR) { player.pos.y = y + 2; break; }
@@ -1711,7 +1915,8 @@ document.addEventListener('mousemove', (e) => {
         pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, pitch));
     }
 });
-document.addEventListener('keydown', e => keys[e.code] = true);
+document.addEventListener('keydown', e => { keys[e.code] = true; if (document.pointerLockElement && e.ctrlKey && e.code !== 'KeyQ') e.preventDefault(); });   // 遊戲中按住 Ctrl 蹲下時，擋掉 Ctrl+S / Ctrl+D 等瀏覽器快捷鍵
+window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });   // 切換視窗時放開所有按鍵（避免 Ctrl / Shift 卡住）
 document.addEventListener('keyup', e => keys[e.code] = false);
 
 function checkCollision(pos) {
@@ -1724,7 +1929,7 @@ function checkCollision(pos) {
     return false;
 }
 
-let lavaT = 0; const _move = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0), _wp = new THREE.Vector3();
+let lavaT = 0, lavaIn = false, burnT = 0; const _move = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0), _wp = new THREE.Vector3();
 const _start = new THREE.Vector3(), _dir = new THREE.Vector3();
 
 function hasGround(p) { for (const dx of [-.3, .3]) for (const dz of [-.3, .3]) { const b = getBlockGlobal(Math.floor(p.x + dx), Math.floor(p.y - .1), Math.floor(p.z + dz)); if (b !== BLOCK.AIR && !isW(b) && !isL(b) && !isPortal(b) && !isCrop(b) && b !== BLOCK.TORCH) return true; } return false; }
@@ -1736,7 +1941,7 @@ function updatePhysics(dt) {
     if (keys['KeyD']) _move.x += 1;
     _move.normalize().applyAxisAngle(_up, yaw);
 
-    const sneak = !!keys['KeyC'], speed = (sneak ? player.speed * 0.3 : keys['KeyZ'] ? player.speed * 1.6 : player.speed) * (godMode ? 1.8 : 1);
+    const sneak = !!(keys['ControlLeft'] || keys['ControlRight']), sprint = !!(keys['ShiftLeft'] || keys['ShiftRight']), speed = (sneak ? player.speed * 0.3 : sprint ? player.speed * 1.6 : player.speed) * (godMode ? 1.8 : 1);
 
     player.pos.x += _move.x * speed * dt;
     if (checkCollision(player.pos) || (sneak && player.onGround && !hasGround(player.pos))) player.pos.x -= _move.x * speed * dt;
@@ -1757,14 +1962,26 @@ function updatePhysics(dt) {
             if (checkCollision(_wp.set(player.pos.x + ox, wy, player.pos.z + oz))) { player.vel.y = Math.max(player.vel.y, 10); player.kx = ox * 7; player.kz = oz * 7; break; }
         }
       } }
-    { const lx = Math.floor(player.pos.x), lz = Math.floor(player.pos.z);
-      if (liqAt(player.pos.x, player.pos.y + .05, player.pos.z, isL) || liqAt(player.pos.x, player.pos.y + 1, player.pos.z, isL)) {
-        player.vel.y = Math.max(player.vel.y * Math.max(0, 1 - 6 * dt), -1.5); if (keys['Space']) player.vel.y = 2.5; player.fallFrom = player.pos.y;
-        lavaT += dt; if (lavaT > .5) { lavaT = 0; hurt(4, undefined, undefined, true); }
-      } else lavaT = 0; }
+    {   // 岩漿：身體任何高度碰到都算；受傷計時不會因為在岩漿面上浮沉而被重置；離開後還會短暫燃燒
+      const px = player.pos.x, py = player.pos.y, pz = player.pos.z, inLava = liqAt(px, py + .05, pz, isL) || liqAt(px, py + .9, pz, isL) || liqAt(px, py + 1.5, pz, isL);
+      if (inLava) {
+        player.vel.y = Math.max(player.vel.y * Math.max(0, 1 - 6 * dt), -1.5); if (keys['Space']) player.vel.y = Math.max(player.vel.y, 3); player.fallFrom = player.pos.y;
+        if (!lavaIn) { lavaIn = true; lavaT = .5; }
+        lavaT += dt; burnT = 3;
+        if (lavaT >= .5) { lavaT = 0; hurt(4); }
+        // 岸邊有方塊擋住時，自動往上推並朝岸邊移動，爬出岩漿（和水一樣）
+        if (!isL(getBlockGlobal(Math.floor(px), Math.floor(py + 1.4), Math.floor(pz))) && (keys['Space'] || _move.lengthSq() > 0)) {
+            for (const [ox, oz] of [[.4, 0], [-.4, 0], [0, .4], [0, -.4]]) {
+                if (checkCollision(_wp.set(px + ox, py, pz + oz))) { player.vel.y = Math.max(player.vel.y, 10); player.kx = ox * 7; player.kz = oz * 7; break; }
+            }
+        }
+      } else {
+        lavaIn = false;
+        if (burnT > 0) { burnT -= dt; lavaT += dt; if (lavaT >= 1) { lavaT = 0; hurt(1); } } else lavaT = 0;
+      } }
     if (keys['Space'] && player.onGround) { player.vel.y = player.jumpForce; player.onGround = false; sfx('jump'); }
 
-    if (godMode) { player.vel.y = (keys['Space'] ? 9 : 0) + ((keys['ShiftLeft'] || keys['ShiftRight']) ? -9 : 0); player.fallFrom = player.pos.y; }
+    if (godMode) { player.vel.y = (keys['Space'] ? 9 : 0) + (sneak ? -9 : 0); player.fallFrom = player.pos.y; }
     player.pos.y += player.vel.y * dt;
     if (checkCollision(player.pos)) {
         const falling = player.vel.y < 0;
@@ -1785,7 +2002,7 @@ function updatePhysics(dt) {
     stepTick(dt, _move.lengthSq() > 0 && !godMode, speed, sneak);
     if (player.pos.y < -10) hurt(20, undefined, undefined, true);
 
-    camera.position.set(player.pos.x, player.pos.y + (keys['KeyC'] ? 1.3 : 1.6), player.pos.z);
+    camera.position.set(player.pos.x, player.pos.y + (sneak ? 1.3 : 1.6), player.pos.z);
     camera.rotation.y = yaw;
     camera.rotation.x = pitch;
 }
@@ -1870,6 +2087,19 @@ function makeMob(type, x, y, z, prof, nid) {
         for (const sx of [-.375, .375]) { const a = new THREE.Group(); a.position.set(sx, 1.35, 0); a.rotation.x = -1.2; g.add(a); P(.22, .7, .22, 0, -.35, 0, pk, a); P(.24, .3, .24, 0, -.12, 0, 0x6f8a4a, a); }
         P(.08, .55, .08, .38, 1.0, .5, gd); P(.2, .06, .1, .38, .75, .5, 0xb8901a);
         for (const sx of [-.13, .13]) L(.25, .7, .25, sx, .35, 0, 0x4a5e30, sx < 0 ? 0 : Math.PI);
+    } else if (type === 'enderman') {   // 終界使者：全黑高個子、紫色眼睛、細長四肢
+        const bk = 0x15111b, ey = 0xe070ff;
+        P(.5, .75, .26, 0, 1.85, 0, bk); P(.5, .5, .5, 0, 2.5, 0, bk); P(.16, .06, .02, -.13, 2.5, .26, ey); P(.16, .06, .02, .13, 2.5, .26, ey);
+        for (const sx of [-.36, .36]) { const a = new THREE.Group(); a.position.set(sx, 2.15, 0); g.add(a); P(.12, 1.45, .12, 0, -.72, 0, bk, a); }
+        for (const sx of [-.13, .13]) L(.14, 1.45, .14, sx, 0, 0, 0x100d15, sx < 0 ? 0 : Math.PI);
+    } else if (type === 'dragon') {   // 終界龍：黑色巨龍、會拍動的翅膀
+        const bk = 0x17141d, pl = 0x2a2234, ey = 0xe070ff; g.rotation.order = 'YXZ'; const wings = [];
+        P(1.7, 1.4, 3.4, 0, 1.4, 0, bk); P(1.2, 1.1, 1.4, 0, 1.55, 2.3, bk); P(1.3, 1.0, 1.5, 0, 1.75, 3.5, bk); P(.8, .45, 1.1, 0, 1.55, 4.6, 0x100d15);
+        P(.2, .12, .05, -.45, 2.05, 4.28, ey); P(.2, .12, .05, .45, 2.05, 4.28, ey); P(.12, .45, .12, -.4, 2.45, 3.2, pl); P(.12, .45, .12, .4, 2.45, 3.2, pl);
+        P(1.0, .9, 2.2, 0, 1.3, -2.6, bk); P(.7, .7, 2.2, 0, 1.2, -4.7, bk); P(.45, .45, 2.2, 0, 1.1, -6.8, bk);
+        for (const sd of [-1, 1]) { const w = new THREE.Group(); w.position.set(sd * .85, 2.0, .3); g.add(w); P(4.6, .16, 2.4, sd * 2.3, 0, 0, pl, w); P(4.6, .22, .5, sd * 2.3, .04, .9, bk, w); wings.push({ p: w, side: sd }); }
+        for (const sx of [-.5, .5]) for (const sz of [-.9, 1.1]) P(.4, .9, .4, sx, .5, sz, bk);
+        g.userData.wings = wings;
     } else {
         const sk = 0x5a9f4a;
         P(.5, .7, .25, 0, 1.05, 0, 0x2aa8a8); P(.52, .14, .27, 0, .78, 0, 0x2a8a8a); P(.5, .5, .5, 0, 1.6, 0, sk); P(.1, .08, .02, -.12, 1.62, .26, 0x111111); P(.1, .08, .02, .12, 1.62, .26, 0x111111); P(.16, .05, .02, 0, 1.47, .26, 0x2f5a28); P(.5, .06, .52, 0, 1.87, 0, 0x3f7a35);
@@ -1878,11 +2108,13 @@ function makeMob(type, x, y, z, prof, nid) {
     }
     g.userData.legs = legs;
     g.position.set(x, y, z); scene.add(g);
-    const _mob = { type, g, mats, pos: new THREE.Vector3(x, y, z), tp: new THREE.Vector3(x, y, z), vy: 0, kx: 0, kz: 0, hp: type==='horse' ? 15 : type==='wolf' ? 8 : type==='rabbit' ? 3 : PASSIVE.includes(type) ? 10 : 20, angry: false,
-        w: type==='horse' ? 1.1 : type==='rabbit' ? .4 : type==='wolf' ? .6 : ['pig','cow','sheep'].includes(type) ? .8 : type==='chicken' ? .5 : .6, h: type==='horse' ? 1.6 : type==='rabbit' ? .5 : type==='wolf' ? .85 : PASSIVE.includes(type) ? .9 : 1.85, ang: Math.random() * 6.283, walking: false, t: 0, cd: 0, flash: 0, onGround: false };
+    const _mob = { type, g, mats, pos: new THREE.Vector3(x, y, z), tp: new THREE.Vector3(x, y, z), vy: 0, kx: 0, kz: 0, hp: type==='dragon' ? 150 : type==='enderman' ? 40 : type==='horse' ? 15 : type==='wolf' ? 8 : type==='rabbit' ? 3 : PASSIVE.includes(type) ? 10 : 20, angry: false,
+        w: type==='dragon' ? 2 : type==='enderman' ? .6 : type==='horse' ? 1.1 : type==='rabbit' ? .4 : type==='wolf' ? .6 : ['pig','cow','sheep'].includes(type) ? .8 : type==='chicken' ? .5 : .6, h: type==='dragon' ? 2.4 : type==='enderman' ? 2.9 : type==='horse' ? 1.6 : type==='rabbit' ? .5 : type==='wolf' ? .85 : PASSIVE.includes(type) ? .9 : 1.85, ang: Math.random() * 6.283, walking: false, t: 0, cd: 0, flash: 0, onGround: false };
+    if (type === 'dragon') _mob.hr = 2.6;   // 龍的受擊範圍比一般怪物大
     _mob.nid = nid !== undefined ? nid : nidC++; mobs.push(_mob); mobMap.set(_mob.nid, _mob); return _mob;
 }
-function animMob(m, mv, dt) {   // 依實際移動距離擺腿：走得越快擺幅越大，停下來腿會回正
+function animMob(m, mv, dt) {
+    if (m.g.userData.wings) { m.wt = (m.wt || 0) + dt * 5; for (const w of m.g.userData.wings) w.p.rotation.z = w.side * (Math.sin(m.wt) * .55 + .08); }   // 依實際移動距離擺腿：走得越快擺幅越大，停下來腿會回正
     const p = m.g.position, d = m._lx === undefined ? 0 : Math.min(.6, Math.hypot(p.x - m._lx, p.z - m._lz));
     m._lx = p.x; m._lz = p.z;
     const tgt = dt > 0 ? Math.min(1, d / dt / .8) : 0;
@@ -1923,10 +2155,10 @@ function spawnNetherMob(c) {
     }
 }
 function trySpawn() {
-    { const cs = [player.pos, ...[...remotes.values()].map(r => r.target)], c0 = cs[Math.floor(Math.random() * cs.length)]; if (c0.x >= NETHER_ZONE) { spawnNetherMob(c0); return; } }
+    { const cs = [player.pos, ...[...remotes.values()].map(r => r.target)], c0 = cs[Math.floor(Math.random() * cs.length)]; if (c0.x >= NETHER_ZONE) { spawnNetherMob(c0); return; } if (c0.x <= END_ZONE) { spawnEndMob(c0); return; } }
     const passive = mobs.filter(m => PASSIVE.includes(m.type)).length, zs = mobs.filter(m=>m.type==='zombie').length;
     const types=SPAWN_TYPES, zcap = isNight ? 6 + 3 * remotes.size : 0;
-    const type = passive < 14 + 6 * remotes.size && (zs >= zcap || Math.random() < 0.7) ? types[Math.floor(Math.random()*types.length)] : zs < zcap ? 'zombie' : null;
+    const type = (isNight && Math.random() < .05 && mobs.filter(m => m.type === 'enderman').length < 2) ? 'enderman' : passive < 14 + 6 * remotes.size && (zs >= zcap || Math.random() < 0.7) ? types[Math.floor(Math.random()*types.length)] : zs < zcap ? 'zombie' : null;
     if (!type) return;
     const a = Math.random() * 6.283, d = 14 + Math.random() * 14;
     const ctr = [player.pos, ...[...remotes.values()].map(r => r.target)], cp0 = ctr[Math.floor(Math.random() * ctr.length)];
@@ -1970,14 +2202,17 @@ function torchTick(dt) {
     }
     TORCH_LIGHTS.forEach((l, i) => { l.intensity = l.userData.on ? 1.6 + .25 * Math.sin(t * 9 + i * 2.1) * Math.sin(t * 3.7 + i) : 0; });
 }
-let cullT = 0;
+let cullT = 0, structT = 0;
 function cullChunks() {   // 霧外的區塊不送進 GPU：地獄只畫 6 區塊內，主世界畫到顯示距離
-    const nth = player.pos.x >= NETHER_ZONE, R = nth ? 6 : RENDER_DISTANCE + 1, R2 = R * R, pcx = Math.floor(player.pos.x / CHUNK_SIZE), pcz = Math.floor(player.pos.z / CHUNK_SIZE);
+    const nth = player.pos.x >= NETHER_ZONE || player.pos.x <= END_ZONE, R = nth ? 6 : RENDER_DISTANCE + 1, R2 = R * R, pcx = Math.floor(player.pos.x / CHUNK_SIZE), pcz = Math.floor(player.pos.z / CHUNK_SIZE);
     for (const c of chunks.values()) { const dx = c.cx - pcx, dz = c.cz - pcz, v = dx * dx + dz * dz <= R2; if (c.mesh) c.mesh.visible = v; if (c.meshT) c.meshT.visible = v; }
 }
-let wasNether = false;
+let wasNether = false, wasEnd = false;
 function updateTime(dt) {
     const nth = player.pos.x >= NETHER_ZONE; emberTick(dt, nth); torchTick(dt);
+    { const end = player.pos.x <= END_ZONE;
+      if (end !== wasEnd) { wasEnd = end; if (end) { scene.fog.near = 8; scene.fog.far = 92; ambLight.color.setHex(0xd8c8ff); } else { scene.fog.near = (RENDER_DISTANCE - 1.5) * CHUNK_SIZE; scene.fog.far = RENDER_DISTANCE * CHUNK_SIZE; ambLight.color.setHex(0xffffff); } }
+      if (end) { scene.background.setRGB(.045, .02, .085); scene.fog.color.copy(scene.background); dirLight.intensity = .3; ambLight.intensity = .8; return; } }
     if (nth !== wasNether) { wasNether = nth; scene.fog.near = nth ? 4 : (RENDER_DISTANCE - 1.5) * CHUNK_SIZE; scene.fog.far = nth ? 78 : RENDER_DISTANCE * CHUNK_SIZE; ambLight.color.setHex(nth ? 0xffb8a8 : 0xffffff); }
     if (nth) { tod = (tod + dt / 480) % 1; { const pl = .5 + .5 * Math.sin(performance.now() / 1700); scene.background.setRGB(.16 + .07 * pl, .03 + .015 * pl, .03); } scene.fog.color.copy(scene.background); dirLight.intensity = .2; ambLight.intensity = .85 + .06 * Math.sin(performance.now() / 230) * Math.sin(performance.now() / 970); return; }
     tod = (tod + dt / 480) % 1; const sun = Math.sin(tod * 6.2832);
@@ -2019,13 +2254,35 @@ function findMob() {
     const cp = camera.position; let best = null, bt = 4;
     for (const m of mobs) {
         const cx = m.pos.x - cp.x, cy = m.pos.y + m.h / 2 - cp.y, cz = m.pos.z - cp.z, t = cx * _dir.x + cy * _dir.y + cz * _dir.z;
-        if (t < 0 || t > bt || Math.hypot(cx - _dir.x * t, cy - _dir.y * t, cz - _dir.z * t) > m.h / 2 * 0.7 + 0.1) continue;
+        if (t < 0 || t > bt || Math.hypot(cx - _dir.x * t, cy - _dir.y * t, cz - _dir.z * t) > (m.hr || m.h / 2 * 0.7 + 0.1)) continue;
         if (targetBlock && Math.hypot(targetBlock.x + .5 - cp.x, targetBlock.y + .5 - cp.y, targetBlock.z + .5 - cp.z) < t - 0.5) continue;
         best = m; bt = t;
     }
     return best;
 }
 function sleepInBed() { if (!isNight) { toast('只能在夜晚睡覺'); return; } if (isClient) netSend({ t: 'sl' }); else tod = 0.03; toast('你睡了一覺，天亮了'); }
+const boomFx = document.createElement('div'); boomFx.style.cssText = 'position:fixed;inset:0;background:radial-gradient(circle,rgba(255,240,200,.95),rgba(255,120,20,.7));opacity:0;pointer-events:none;z-index:15'; document.body.appendChild(boomFx);
+function explode(x, y, z, r) {   // 爆炸：炸掉半徑內的方塊（基岩、黑曜石、終界框架、液體不受影響），傷害玩家與附近怪物
+    sfx('boom'); boomFx.style.transition = 'none'; boomFx.style.opacity = .9; requestAnimationFrame(() => { boomFx.style.transition = 'opacity .9s'; boomFx.style.opacity = 0; });
+    const bx = Math.floor(x), by = Math.floor(y), bz = Math.floor(z), R = Math.ceil(r);
+    for (let dx = -R; dx <= R; dx++) for (let dy = -R; dy <= R; dy++) for (let dz = -R; dz <= R; dz++) {
+        const d = Math.hypot(dx, dy, dz); if (d > r) continue;
+        const wy = by + dy; if (wy < 1 || wy > 62) continue;
+        const b = getBlockGlobal(bx + dx, wy, bz + dz);
+        if (b === BLOCK.AIR || b === BLOCK.BEDROCK || b === BLOCK.OBS || b === BLOCK.CHESTB || (b >= 50 && b <= 52) || isW(b) || isL(b) || isNP(b)) continue;
+        if (d > r * (.55 + Math.random() * .45)) continue;
+        setBlockGlobal(bx + dx, wy, bz + dz, BLOCK.AIR);
+    }
+    const pd = Math.hypot(player.pos.x - x, player.pos.y + .9 - y, player.pos.z - z);
+    if (pd < r * 2) hurt(Math.max(1, Math.round(32 * (1 - pd / (r * 2)))), x, z);
+    if (!isClient) for (const m of mobs) { const d = Math.hypot(m.pos.x - x, m.pos.y + m.h / 2 - y, m.pos.z - z); if (d < r * 2) { m.hp -= 24 * (1 - d / (r * 2)); m.flash = .3; m.vy = 6; } }
+}
+function useBed(tb) {
+    if (tb.x >= NETHER_ZONE || tb.x <= END_ZONE) { toast('這個世界的床會爆炸！'); explode(tb.x + .5, tb.y + .5, tb.z + .5, 5); return; }
+    respawnPoint = { x: tb.x, y: tb.y, z: tb.z };
+    if (!isNight) { toast('重生點已設定（白天無法睡覺）'); return; }
+    sleepInBed(); toast('你睡了一覺，天亮了（重生點已設定）');
+}
 let wAcc = 0, cAcc = 0;
 const DIR4 = [[1,0],[-1,0],[0,1],[0,-1]];
 function tickWorld(dt) {
@@ -2118,17 +2375,53 @@ function breakPortalAround(x, y, z) {   // 黑曜石框被拆掉：相連的傳�
 }
 let portalT = 0, portalCool = false;
 const portalFx = document.createElement('div'); portalFx.style.cssText = 'position:fixed;inset:0;background:radial-gradient(circle,rgba(150,70,230,.35),rgba(90,20,170,.75));opacity:0;pointer-events:none;z-index:14;transition:opacity .15s'; document.body.appendChild(portalFx);
+let endT = 0;
 function portalTick(dt) {
-    const bx = Math.floor(player.pos.x), bz = Math.floor(player.pos.z), inP = isPortal(getBlockGlobal(bx, Math.floor(player.pos.y + .3), bz)) || isPortal(getBlockGlobal(bx, Math.floor(player.pos.y + 1.2), bz));
+    const bx = Math.floor(player.pos.x), bz = Math.floor(player.pos.z), b1 = getBlockGlobal(bx, Math.floor(player.pos.y + .3), bz), b2 = getBlockGlobal(bx, Math.floor(player.pos.y + 1.2), bz);
+    if (b1 === 52 || b2 === 52) {   // 終界傳送門
+        if (!portalCool) { if (endT === 0) sfx('portal', 0, .7); endT += dt; portalFx.style.opacity = Math.min(.9, endT / .8 * .9); if (endT >= .8) { endT = 0; useEndPortal(); } }
+        return;
+    }
+    if (endT > 0) endT = 0;
+    const inP = isNP(b1) || isNP(b2);
     if (!inP) { portalCool = false; portalT = Math.max(0, portalT - dt * 2); }
     else if (!portalCool) { if (portalT === 0) sfx('portal', 0, .7); portalT += dt; if (portalT >= 1.8) { portalT = 0; usePortal(); } }
     portalFx.style.opacity = Math.min(.9, portalT / 1.8 * .9);
+}
+function useEndPortal() {
+    const toEnd = player.pos.x > END_ZONE;
+    if (toEnd) {
+        const px = END_X0 + 24, pz = 0;
+        player.pos.set(px + .5, 44, pz + .5); updateChunks(player.pos, true); flushAll();
+        let y = 62; while (y > 1 && getBlockGlobal(px, y - 1, pz) === BLOCK.AIR) y--;
+        player.pos.set(px + .5, y + .02, pz + .5); yaw = Math.PI / 2;
+    } else { spawn(); }
+    player.vel.set(0, 0, 0); player.kx = player.kz = 0; player.fallFrom = player.pos.y; portalCool = true; portalT = 0; portalFx.style.opacity = 0;
+    updateChunks(player.pos, true); flushAll();
+    toast(toEnd ? '你進入了終界' : '你回到了主世界');
+}
+function tryOpenEndPortal(x, y, z) {   // 12 個框架都放了眼睛 → 啟動 3×3 傳送門
+    for (let cx = x - 3; cx <= x + 3; cx++) for (let cz = z - 3; cz <= z + 3; cz++) {
+        let ok = true;
+        for (let dx = -2; dx <= 2 && ok; dx++) for (let dz = -2; dz <= 2; dz++) {
+            const ax = Math.abs(dx), az = Math.abs(dz); if (Math.max(ax, az) !== 2 || (ax === 2 && az === 2)) continue;
+            if (getBlockGlobal(cx + dx, y, cz + dz) !== BLOCK.EFRAME_EYE) { ok = false; break; }
+        }
+        if (!ok) continue;
+        for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) setBlockGlobal(cx + dx, y, cz + dz, BLOCK.EPORTAL);
+        sfx('portal', 0, .8); toast('終界傳送門已啟動！'); return true;
+    }
+    return false;
+}
+function useEyeOnFrame(tb) {
+    const st = slots[currentSlot]; if (!st || st.id !== ITEM.EYE || getBlockGlobal(tb.x, tb.y, tb.z) !== BLOCK.EFRAME) return false;
+    setBlockGlobal(tb.x, tb.y, tb.z, BLOCK.EFRAME_EYE); sfx('place', matOf(BLOCK.STONE)); useSel(); tryOpenEndPortal(tb.x, tb.y, tb.z); return true;
 }
 function findPortalNear(tx, tz, r) {
     let best = null, bd = 1e9;
     for (let x = tx - r; x <= tx + r; x++) for (let z = tz - r; z <= tz + r; z++) {
         if (!chunkLoaded(x, z)) continue; const dd = (x - tx) ** 2 + (z - tz) ** 2; if (dd >= bd) continue;
-        for (let y = 1; y < 62; y++) if (isPortal(getBlockGlobal(x, y, z))) { let yy = y; while (isPortal(getBlockGlobal(x, yy - 1, z))) yy--; best = [x, yy, z]; bd = dd; break; }
+        for (let y = 1; y < 62; y++) if (isNP(getBlockGlobal(x, y, z))) { let yy = y; while (isNP(getBlockGlobal(x, yy - 1, z))) yy--; best = [x, yy, z]; bd = dd; break; }
     }
     return best;
 }
@@ -2162,6 +2455,7 @@ function liquidRay() {   // 桶子專用射線：會命中水與岩漿
     return null;
 }
 function setHeld(id) {
+    if (godMode) return;   // 創造模式：水桶／岩漿桶用不完
     const st = slots[currentSlot];
     if (st.n <= 1) slots[currentSlot] = { id, n: 1 }; else { st.n--; const l = addItem(id, 1); if (l) throwItem(id, l); }
     updateHotbar();
@@ -2176,6 +2470,7 @@ function useBucket(st) {
     const flow = (isW(h.b) && h.b !== BLOCK.WATER) || (isL(h.b) && h.b !== BLOCK.LAVA), [tx, ty, tz] = flow ? [h.x, h.y, h.z] : [h.px, h.py, h.pz], tb = getBlockGlobal(tx, ty, tz);
     if (tb !== BLOCK.AIR && !(isW(tb) || isL(tb))) return;
     if (tb === BLOCK.WATER || tb === BLOCK.LAVA) return;
+    if (st.id === ITEM.WBUCKET && player.pos.x >= NETHER_ZONE) { sfx('splash'); toast('水在地獄蒸發了'); setHeld(ITEM.BUCKET); return; }
     setBlockGlobal(tx, ty, tz, st.id === ITEM.WBUCKET ? BLOCK.WATER : BLOCK.LAVA); sfx('bucket', st.id === ITEM.WBUCKET ? 1 : 2); setHeld(ITEM.BUCKET);
 }
 const _ac = {};
@@ -2212,29 +2507,88 @@ function stepWater() {   // 水每 0.25 秒更新一次，岩漿每 1.5 秒一�
         liqCell(x, y, z, b, LIQ.w);
     }
 }
+const bossBar = document.createElement('div'); bossBar.style.cssText = 'position:fixed;top:36px;left:50%;transform:translateX(-50%);width:min(520px,70vw);height:16px;background:rgba(0,0,0,.6);border:2px solid #000;outline:2px solid #6a3a8a;z-index:12;display:none;pointer-events:none';
+bossBar.innerHTML = '<div style="position:absolute;top:-28px;left:0;right:0;text-align:center;color:#fff;font-size:22px;text-shadow:1px 1px 0 #000">終界龍</div><div style="height:100%;width:100%;background:#b050e0"></div>'; document.body.appendChild(bossBar);
+function bossTick() { const d = mobs.find(m => m.type === 'dragon'), show = !!d && player.pos.x <= END_ZONE; bossBar.style.display = show ? 'block' : 'none'; if (show) bossBar.lastChild.style.width = Math.max(0, d.hp / 150 * 100) + '%'; }
+function enderTeleport(m, cx, cz, rmin, rmax) {   // 終界使者瞬間移動：在 (cx,cz) 周圍找一個站得下的地面
+    for (let t = 0; t < 12; t++) {
+        const a = Math.random() * 6.283, d = rmin + Math.random() * (rmax - rmin), x = Math.floor(cx + Math.sin(a) * d), z = Math.floor(cz + Math.cos(a) * d);
+        if (!chunkLoaded(x, z)) continue;
+        for (let y = Math.min(62, Math.floor(m.pos.y) + 8); y > Math.max(2, Math.floor(m.pos.y) - 12); y--) {
+            const b = getBlockGlobal(x, y, z); if (b === BLOCK.AIR) continue;
+            if (!isW(b) && !isL(b) && !isPortal(b) && !isCrop(b) && b !== BLOCK.TORCH && getBlockGlobal(x, y + 1, z) === BLOCK.AIR && getBlockGlobal(x, y + 2, z) === BLOCK.AIR && getBlockGlobal(x, y + 3, z) === BLOCK.AIR) {
+                sfxAt('mob', 'enderman:hurt', m.pos.x, m.pos.y + 1, m.pos.z); m.pos.set(x + .5, y + 1, z + .5); m.vy = 0; m.flash = .15; sfxAt('mob', 'enderman:say', m.pos.x, m.pos.y + 1, m.pos.z); return true;
+            }
+            break;
+        }
+    }
+    return false;
+}
+function enderBrain(m, dt, dist, tp) {   // 被玩家盯著頭看就會生氣；生氣時會瞬間移動到玩家附近
+    if (!m.angry && !godMode && tp === player.pos && dist < 40) {
+        _dir.set(0, 0, -1).applyQuaternion(camera.quaternion).normalize();
+        const vx = m.pos.x - camera.position.x, vy = m.pos.y + 2.5 - camera.position.y, vz = m.pos.z - camera.position.z, vl = Math.hypot(vx, vy, vz) || 1;
+        if ((vx * _dir.x + vy * _dir.y + vz * _dir.z) / vl > .985) { m.angry = true; sfxAt('mob', 'enderman:hurt', m.pos.x, m.pos.y + 1, m.pos.z); }
+    }
+    m.tpT = (m.tpT || 0) - dt;
+    if (m.angry) { if (dist > 5 && m.tpT <= 0 && Math.random() < dt * .35) { m.tpT = 4; enderTeleport(m, tp.x, tp.z, 3, 6); } }
+    else if (Math.random() < dt * .02) enderTeleport(m, m.pos.x, m.pos.z, 4, 14);
+}
+function updateDragon(m, dt, tp, tid) {   // 終界龍：繞著島飛行，隔一陣子俯衝撞向玩家
+    m.pt = (m.pt === undefined ? 6 : m.pt) - dt; m.cd -= dt; m.flash -= dt;
+    if (!m.phase) { m.phase = 'circle'; m.ca = Math.random() * 6.283; m.dv = new THREE.Vector3(); }
+    const near = Math.hypot(tp.x - END_X0, tp.z) < 70 && tp.y > 20;
+    let tx, ty, tz, spd;
+    if (m.phase === 'circle') {
+        m.ca += dt * .35; tx = END_X0 + Math.cos(m.ca) * 34; tz = Math.sin(m.ca) * 34; ty = 58 + Math.sin(m.ca * 2) * 5; spd = 13;
+        if (m.pt <= 0 && near) { m.phase = 'strafe'; m.pt = 7; }
+    } else {
+        tx = tp.x; tz = tp.z; ty = tp.y + 1.2; spd = 17;
+        if (m.pt <= 0 || !near) { m.phase = 'circle'; m.pt = 8 + Math.random() * 6; m.ca = Math.atan2(m.pos.z, m.pos.x - END_X0); }
+    }
+    const dx = tx - m.pos.x, dy = ty - m.pos.y, dz = tz - m.pos.z, d = Math.hypot(dx, dy, dz) || 1, k = Math.min(1, dt * 2.2);
+    m.dv.x += (dx / d * spd - m.dv.x) * k; m.dv.y += (dy / d * spd - m.dv.y) * k; m.dv.z += (dz / d * spd - m.dv.z) * k;
+    m.pos.x += m.dv.x * dt; m.pos.y = Math.max(30, Math.min(72, m.pos.y + m.dv.y * dt)); m.pos.z += m.dv.z * dt;
+    if (Math.hypot(m.dv.x, m.dv.z) > .5) m.ang = Math.atan2(m.dv.x, m.dv.z);
+    if (m.phase === 'strafe' && m.cd <= 0 && Math.hypot(tp.x - m.pos.x, tp.y + .9 - m.pos.y, tp.z - m.pos.z) < 3.6) { m.cd = 1.5; hurtPlayer(tid, 8, m.pos.x, m.pos.z); sfxAt('mob', 'dragon:hurt', m.pos.x, m.pos.y, m.pos.z); m.phase = 'circle'; m.pt = 8; m.ca = Math.atan2(m.pos.z, m.pos.x - END_X0); }
+    m.sayT = (m.sayT || 0) - dt; if (m.sayT <= 0) { m.sayT = 7 + Math.random() * 6; sfxAt('mob', 'dragon:say', m.pos.x, m.pos.y, m.pos.z); }
+    m.g.position.copy(m.pos); m.g.rotation.y = m.ang; m.g.rotation.x = -Math.atan2(m.dv.y, Math.hypot(m.dv.x, m.dv.z) + 1) * .5; animMob(m, true, dt);
+    const em = m.flash > 0 ? 0xaa0000 : 0; m.mats.forEach(x => x.emissive.setHex(em));
+}
+function spawnEndMob(c) {
+    if (!isClient && !dragonDefeated && !mobs.some(m => m.type === 'dragon')) { makeMob('dragon', END_X0 + .5, 60, .5); toast('終界龍出現了！'); }
+    if (mobs.filter(m => m.type === 'enderman').length >= 8 + 2 * remotes.size) return;
+    const a = Math.random() * 6.283, d = 10 + Math.random() * 18, x = Math.floor(c.x + Math.sin(a) * d), z = Math.floor(c.z + Math.cos(a) * d);
+    if (!chunkLoaded(x, z)) return;
+    for (let y = 62; y > 20; y--) { const b = getBlockGlobal(x, y, z); if (b === BLOCK.AIR) continue; if (b === BLOCK.ENDSTONE && getBlockGlobal(x, y + 1, z) === BLOCK.AIR && getBlockGlobal(x, y + 2, z) === BLOCK.AIR && getBlockGlobal(x, y + 3, z) === BLOCK.AIR) makeMob('enderman', x + .5, y + 1, z + .5); return; }
+}
 function updateMobs(dt) {
     updateTime(dt); tickWorld(dt);
     if (isClient) { clientMobs(dt); return; }
-    spawnT -= dt;
+    bossTick(); spawnT -= dt;
     if (spawnT <= 0) { spawnT = 3; trySpawn(); }
     for (let i = mobs.length - 1; i >= 0; i--) {
         const m = mobs[i];
         let tp = player.pos, tid = null, dx = tp.x - m.pos.x, dz = tp.z - m.pos.z, dist = Math.hypot(dx, dz);
         for (const [rid, r] of remotes) { const ex = r.target.x - m.pos.x, ez = r.target.z - m.pos.z, ed = Math.hypot(ex, ez); if (ed < dist) { tp = r.target; tid = rid; dx = ex; dz = ez; dist = ed; } }
-        if (m.hp <= 0 || (dist > 48 && m.type !== 'villager') || m.pos.y < -10) {
+        if (m.hp <= 0 || (dist > 48 && m.type !== 'villager' && m.type !== 'dragon') || m.pos.y < -10) {
             if(m.hp<=0){ sfxAt('mob', m.type + ':death', m.pos.x, m.pos.y + .5, m.pos.z);
                 const loot={pig:[ITEM.PORK,3],chicken:[ITEM.CHICKEN,2],cow:[ITEM.BEEF,3],sheep:[ITEM.MUTTON,3],rabbit:[ITEM.RABBIT,2],pigman:[ITEM.FLINT,2]}[m.type];
                 if(loot) spawnDrop(loot[0],1+Math.floor(Math.random()*loot[1]),m.pos.x,m.pos.y+.5,m.pos.z);
+                if (m.type === 'enderman' && Math.random() < .75) spawnDrop(ITEM.PEARL, 1, m.pos.x, m.pos.y + .5, m.pos.z);
+                if (m.type === 'dragon') { dragonDefeated = true; toast('終界龍被擊敗了！'); spawnDrop(ITEM.EMERALD, 8, END_X0 + .5, 44, .5); spawnDrop(ITEM.DIAMOND, 4, END_X0 + .5, 44, .5); }
             }
             removeMob(i); continue;
         }
         if (!chunkLoaded(m.pos.x, m.pos.z)) continue;
+        if (m.type === 'dragon') { updateDragon(m, dt, tp, tid); continue; }
+        if (m.type === 'enderman') enderBrain(m, dt, dist, tp);
         if (isL(getBlockGlobal(Math.floor(m.pos.x), Math.floor(m.pos.y + .3), Math.floor(m.pos.z)))) { m.hp -= 4 * dt; m.flash = .2; m.vy = Math.max(m.vy, 1); }
         m.t -= dt; m.cd -= dt; m.flash -= dt;
         let speed = 0;
-        if ((m.type === 'zombie' && dist < 16) || (m.type === 'wolf' && m.angry && dist < 20) || (m.type === 'pigman' && m.angry && dist < 24)) {
-            m.ang = Math.atan2(dx, dz); speed = m.type === 'zombie' ? 2.3 : m.type === 'pigman' ? 2.8 : 3.2;
-            if (dist < 1.1 && Math.abs(tp.y - m.pos.y) < 1.5 && m.cd <= 0) { m.cd = 1.2; hurtPlayer(tid, m.type === 'pigman' ? 3 : 2, m.pos.x, m.pos.z); }
+        if ((m.type === 'zombie' && dist < 16) || (m.type === 'wolf' && m.angry && dist < 20) || (m.type === 'pigman' && m.angry && dist < 24) || (m.type === 'enderman' && m.angry && dist < 40)) {
+            m.ang = Math.atan2(dx, dz); speed = m.type === 'enderman' ? 4.2 : m.type === 'zombie' ? 2.3 : m.type === 'pigman' ? 2.8 : 3.2;
+            if (dist < (m.type === 'enderman' ? 1.6 : 1.1) && Math.abs(tp.y - m.pos.y) < 1.5 && m.cd <= 0) { m.cd = 1.2; hurtPlayer(tid, m.type === 'enderman' ? 7 : m.type === 'pigman' ? 3 : 2, m.pos.x, m.pos.z); }
         } else {
             if (m.t <= 0) { m.t = 2 + Math.random() * 3; m.walking = Math.random() < 0.6; m.ang = Math.random() * 6.283; if (m.home && Math.hypot(m.home.x-m.pos.x,m.home.z-m.pos.z)>12) m.ang = Math.atan2(m.home.x-m.pos.x,m.home.z-m.pos.z); }
             if (m.home) {
@@ -2294,7 +2648,7 @@ function attackMob() {
         const cx = m.pos.x - cp.x, cy = m.pos.y + m.h / 2 - cp.y, cz = m.pos.z - cp.z;
         const t = cx * _dir.x + cy * _dir.y + cz * _dir.z;
         if (t < 0 || t > bt) continue;
-        if (Math.hypot(cx - _dir.x * t, cy - _dir.y * t, cz - _dir.z * t) > m.h / 2 * 0.7 + 0.1) continue;
+        if (Math.hypot(cx - _dir.x * t, cy - _dir.y * t, cz - _dir.z * t) > (m.hr || m.h / 2 * 0.7 + 0.1)) continue;
         if (targetBlock && Math.hypot(targetBlock.x + .5 - cp.x, targetBlock.y + .5 - cp.y, targetBlock.z + .5 - cp.z) < t - 0.5) continue;
         best = m; bt = t;
     }
@@ -2312,7 +2666,7 @@ function attackMob() {
         lastAttack = now; sfx('hit'); sfxAt('mob', best.type + ':hurt', best.pos.x, best.pos.y + .5, best.pos.z);
         const dx = best.pos.x - player.pos.x, dz = best.pos.z - player.pos.z, d = Math.hypot(dx, dz) || 1;
         if (isClient) { netSend({ t: 'am', nid: best.nid, dmg: toolDmg(), kx: dx / d * 6, kz: dz / d * 6 }); best.flash = 0.25; }
-        else { if (best.type === 'wolf' || best.type === 'pigman') best.angry = true; best.hp -= toolDmg(); best.flash = 0.25; best.vy = 4; best.kx = dx / d * 6; best.kz = dz / d * 6; }
+        else { if (best.type === 'wolf' || best.type === 'pigman' || best.type === 'enderman') best.angry = true; if (best.type === 'enderman' && Math.random() < .5) enderTeleport(best, best.pos.x, best.pos.z, 4, 12); best.hp -= toolDmg(); best.flash = 0.25; best.vy = 4; best.kx = dx / d * 6; best.kz = dz / d * 6; }
     }
     return true;
 }
@@ -2323,7 +2677,7 @@ function updateMining(dt) {
     if (!mining || mining.x !== targetBlock.x || mining.y !== targetBlock.y || mining.z !== targetBlock.z)
         mining = { x: targetBlock.x, y: targetBlock.y, z: targetBlock.z, p: 0 };
     const id = getBlockGlobal(mining.x, mining.y, mining.z);
-    const held = slots[currentSlot]?.id, T = TOOLS[held]; let hard = HARDNESS[id] ?? 1;
+    const held = slots[currentSlot]?.id, T = TOOLS[held]; let hard = godMode ? .02 : (HARDNESS[id] ?? 1);
     const kind = (id === 3 || id === 4 || id === 8 || id === 31 || id === 32 || id === 33 || id === 39 || id === 40 || id === 42) ? 'pick' : (id === 5 || id === 6 || id === 12 || id === 14 || id === 34) ? 'axe' : (id === 2 || id === 1 || id === 9 || id === 13 || id === 15 || id === 16 || id === 41 || id === 45) ? 'shovel' : '';
     if (T && T.kind === kind) hard /= [2, 4, 6, 8][T.tier]; mining.p += dt / hard;
     col.setRGB(Math.min(mining.p, 1), 0, 0);
@@ -2332,11 +2686,11 @@ function updateMining(dt) {
         sfx('break', matOf(id));
         setBlockGlobal(mining.x, mining.y, mining.z, BLOCK.AIR);
         if (id === BLOCK.OBS) breakPortalAround(mining.x, mining.y, mining.z);
-        if (id === BLOCK.CHESTB) { const k = mining.x + ',' + mining.y + ',' + mining.z, a = chestData.get(k); if (a) a.forEach(s => s && spawnDrop(s.id, s.n, mining.x + .5, mining.y + .5, mining.z + .5)); chestData.delete(k); netSend({ t: 'ch', k, a: [] }); }
+        if (id === BLOCK.CHESTB) { const k = mining.x + ',' + mining.y + ',' + mining.z, a = chestData.get(k); if (a) a.forEach(s => s && !godMode && spawnDrop(s.id, s.n, mining.x + .5, mining.y + .5, mining.z + .5)); chestData.delete(k); netSend({ t: 'ch', k, a: [] }); }
         if (isCrop(id)) { if (id === BLOCK.CROP3) spawnDrop(ITEM.WHEAT, 1, mining.x + .5, mining.y + .3, mining.z + .5); const n = id === BLOCK.CROP3 ? 1 + Math.floor(Math.random() * 3) : 1; spawnDrop(ITEM.SEEDS, n, mining.x + .5, mining.y + .3, mining.z + .5); mining = null; col.setRGB(0, 0, 0); return; }
         const nd = NEED_PICK[id], okTool = nd === undefined || (T && T.kind === 'pick' && T.tier >= nd), drop = !okTool ? BLOCK.AIR : id === BLOCK.GRAVEL ? (Math.random() < .25 ? ITEM.FLINT : id) : (id in DROPS ? DROPS[id] : id);
         if (!okTool) toast(['需要鎬子才會掉落', '需要石鎬以上才會掉落', '需要鐵鎬以上才會掉落', '需要鑽石鎬才會掉落'][nd] || '工具不對，沒有掉落物');   // 礦石徒手/鎬子等級不夠不會掉東西，現在會提示
-        if (drop !== BLOCK.AIR && drop != null) spawnDrop(drop, id === BLOCK.HAY ? 9 : 1, mining.x + .5, mining.y + .3, mining.z + .5);   // 稻草捆掉 9 個小麥
+        if (drop !== BLOCK.AIR && drop != null && !godMode) spawnDrop(drop, id === BLOCK.HAY ? 9 : 1, mining.x + .5, mining.y + .3, mining.z + .5);   // 稻草捆掉 9 個小麥
         mining = null; col.setRGB(0, 0, 0);
     }
 }
@@ -2395,9 +2749,10 @@ window.addEventListener('mousedown', (e) => {
     }
     if (!targetBlock) return;
     if (e.button === 2) {
+        if(useEyeOnFrame(targetBlock)) return;
         if(getBlockGlobal(targetBlock.x,targetBlock.y,targetBlock.z)===BLOCK.CRAFT){openTable();return;}
         if(getBlockGlobal(targetBlock.x,targetBlock.y,targetBlock.z)===BLOCK.CHESTB){openChest(targetBlock);return;}
-        if(getBlockGlobal(targetBlock.x,targetBlock.y,targetBlock.z)===BLOCK.BED){sleepInBed();return;}
+        if(getBlockGlobal(targetBlock.x,targetBlock.y,targetBlock.z)===BLOCK.BED){useBed(targetBlock);return;}
         { const tb = targetBlock, bt = getBlockGlobal(tb.x, tb.y, tb.z), held = slots[currentSlot]?.id, up = getBlockGlobal(tb.x, tb.y + 1, tb.z);
           if (held === ITEM.SEEDS && bt === BLOCK.FARM && up === BLOCK.AIR) { setBlockGlobal(tb.x, tb.y + 1, tb.z, BLOCK.CROP); sfx('place', 'grass'); useSel(); return; }
           if ((TOOLS[held] && TOOLS[held].kind === 'hoe') && (bt === BLOCK.GRASS || bt === BLOCK.DIRT || bt === BLOCK.PATH) && up === BLOCK.AIR) { setBlockGlobal(tb.x, tb.y, tb.z, BLOCK.FARM); sfx('dig', 'dirt'); return; } }
@@ -2467,12 +2822,20 @@ function runCmd(s) {
     } else if (cmd === 'god') {
         if (isClient) return say('多人遊戲中只有房主可以使用 /god');
         godMode = !godMode; player.fallFrom = player.pos.y; player.vel.y = 0;
-        say(godMode ? '無敵與飛行：開（空白鍵上升、Shift 下降）' : '無敵與飛行：關');
+        say(godMode ? '創造模式：開（無敵、飛行、物品欄可任意拿取、瞬間破壞；空白鍵上升、Ctrl 下降）' : '創造模式：關');
     } else if (cmd === 'rd') {
         const n = parseInt(arg);
         if (!n) return say('目前顯示距離：' + RENDER_DISTANCE + ' 區塊（用法：/rd 2~16）');
         RENDER_DISTANCE = Math.max(2, Math.min(16, n)); scene.fog.near = (RENDER_DISTANCE - 1.5) * CHUNK_SIZE; scene.fog.far = RENDER_DISTANCE * CHUNK_SIZE;
         updateChunks(player.pos, true); say('顯示距離已設為 ' + RENDER_DISTANCE + ' 區塊');
+    } else if (cmd === 'locate') {
+        const kind = { fortress: 'fortress', 地獄堡壘: 'fortress', bastion: 'bastion', 豬布林堡壘: 'bastion', 豬布林: 'bastion', stronghold: 'stronghold', 終界: 'stronghold', 終界傳送門: 'stronghold', 要塞: 'stronghold' }[arg.toLowerCase()];
+        if (!kind) return say('用法：/locate fortress（地獄堡壘）｜bastion（豬布林堡壘）｜stronghold（終界傳送門）');
+        const inNether = player.pos.x >= NETHER_ZONE, inEnd = player.pos.x <= END_ZONE;
+        if (kind === 'stronghold' ? (inNether || inEnd) : !inNether) return say(kind === 'stronghold' ? '請在主世界使用 /locate stronghold' : '請在地獄使用 /locate ' + arg);
+        const p = locateStruct(kind, player.pos.x, player.pos.z);
+        if (!p) return say('附近找不到');
+        say('最近的位置：X ' + p.x + '  Y ' + p.y + '  Z ' + p.z + '（約 ' + Math.round(Math.hypot(p.x - player.pos.x, p.z - player.pos.z)) + ' 格）');
     } else say('未知指令：/' + cmd);
 }
 
@@ -2530,6 +2893,7 @@ function startGame() {
     started = true;
     $('lobby').classList.add('hidden'); $('pause').classList.remove('hidden');
     $('room-info').textContent = roomCode ? '房間代碼：' + roomCode : '';
+    respawnPoint = null; dragonDefeated = false;
     spawn();
     restorePlayer();
 }
@@ -2605,7 +2969,7 @@ function onMsg(m, conn) {
     }
     else if (isHost && m.t === 'am') {
         const b = mobMap.get(m.nid); if (!b || !Number.isFinite(m.dmg)) return;
-        if (b.type === 'wolf' || b.type === 'pigman') b.angry = true; b.hp -= Math.min(10, Math.max(0, m.dmg)); b.flash = .25; b.vy = 4; b.kx = +m.kx || 0; b.kz = +m.kz || 0;
+        if (b.type === 'wolf' || b.type === 'pigman' || b.type === 'enderman') b.angry = true; b.hp -= Math.min(10, Math.max(0, m.dmg)); b.flash = .25; b.vy = 4; b.kx = +m.kx || 0; b.kz = +m.kz || 0;
     }
     else if (isHost && m.t === 'pv') {
         const n = Math.min(10, Math.max(0, +m.n || 0)); if (m.to === myId) hurt(n, m.fx, m.fz);
@@ -2722,14 +3086,16 @@ function applyWorld(w) {
 }
 function saveGame(manual) {
     if (!started || !currentUser) return;
-    const okP = lsSet('wmc_pl_' + userKey + '_' + SEED, JSON.stringify({ p: [player.pos.x, player.pos.y, player.pos.z], yaw, hp, hunger, slots: slots.map(s => s ? [s.id, s.n] : 0), armor: ARMOR_KEYS.map(k => armor[k] ? armor[k].id : 0), t: Date.now() }));
+    const okP = lsSet('wmc_pl_' + userKey + '_' + SEED, JSON.stringify({ p: [player.pos.x, player.pos.y, player.pos.z], yaw, hp, hunger, slots: slots.map(s => s ? [s.id, s.n] : 0), armor: ARMOR_KEYS.map(k => armor[k] ? armor[k].id : 0), rp: respawnPoint, dd: dragonDefeated, t: Date.now() }));
     let okW = true;
     if (!isClient) { const ed = []; for (const e of allEdits()) ed.push(e[0], e[1], e[2], e[3]); okW = lsSet('wmc_world_' + userKey, JSON.stringify({ seed: SEED, ed, chests: [...chestData], tod, t: Date.now() })); }
     if (manual) toast(okP && okW ? '已儲存遊戲' : '儲存失敗（瀏覽器儲存空間不足或被停用）');
 }
-function restorePlayer() {
+function restorePlayer() {   // 讀檔／新遊戲：先清掉上一局的重生點
     let d = null; try { d = JSON.parse(lsGet('wmc_pl_' + userKey + '_' + SEED)); } catch (e) {}
+    respawnPoint = null; dragonDefeated = false;
     if (!d) return;
+    respawnPoint = d.rp || null; dragonDefeated = !!d.dd;
     slots.fill(null); (d.slots || []).forEach((e, i) => { if (e && i < 36) slots[i] = { id: e[0], n: e[1] }; });
     ARMOR_KEYS.forEach((k, i) => { const id = (d.armor || [])[i]; armor[k] = id ? { id, n: 1 } : null; });
     hp = Math.max(1, d.hp | 0 || 20); hunger = typeof d.hunger === 'number' ? d.hunger : 20;
@@ -2796,6 +3162,7 @@ function updateView(dt) {
 }
 // ======== 小地圖 / 大地圖（由上往下俯視，依高度與水深上色）========
 const MAPC = { 1: '#5d9b3a', 2: '#8b5a2b', 3: '#7d7d7d', 4: '#6b6b6b', 5: '#5a3d1e', 6: '#b8884a', 7: '#2f6e2a', 8: '#9b5a4a', 9: '#dcd08a', 10: '#cfe8f0', 11: '#333333', 12: '#8a5a2a', 13: '#d9b640', 14: '#7a4a1e', 15: '#a58a54', 16: '#5a3b1c', 17: '#ffe08a', 20: '#c03030', 31: '#444444', 32: '#c8a070', 33: '#4de8e0', 34: '#9a6a2a', 39: '#1a0f2a' };
+Object.assign(MAPC, { 47: '#4a1e24', 48: '#2a2730', 49: '#f2c92c', 50: '#c9c98a', 51: '#2c9a70', 52: '#1a2a6a', 53: '#797979', 54: '#e0e0a8' });
 const _rgb = {};
 function rgbOf(hex) { return _rgb[hex] || (_rgb[hex] = [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]); }
 let mapBudget = 0;
@@ -2882,7 +3249,8 @@ function gameLoop() {
         }
     }
 
-    if (document.pointerLockElement || (started && conns.length)) {   // 連機時開聊天/選單也不暫停世界
+    if (document.pointerLockElement || (started && (conns.length || invOpen))) {   // 開著物品欄／箱子／合成台時世界也繼續運作（重力、怪物不暫停）
+        if ((structT += dt) > 1) { structT = 0; structMobTick(); }   // 連機時開聊天/選單也不暫停世界
         updatePhysics(dt); portalTick(dt);
         raycastVoxel();
         updateMining(dt);
