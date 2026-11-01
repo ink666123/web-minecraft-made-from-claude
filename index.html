@@ -192,6 +192,9 @@ const { sfx, sfxAt, stepTick, feetMat, matOf, ambientTick, remoteBlockSnd } = ((
     function mobSnd(spec, v, pan) {
         const [type, kind = 'say'] = spec.split(':'), hu = kind === 'hurt', de = kind === 'death', r = .92 + Math.random() * .16, o = { pan };
         switch (type) {
+            case 'skeleton': case 'witherskel': noise(.1, 'bandpass', 2800, 2000, 1.3, .3 * v, { ...o }); tone((de ? 180 : 520) * r, de ? 80 : 360, .12, 'square', .1 * v, { ...o, t: .03 }); break;
+            case 'blaze': noise(.5, 'bandpass', 1200, 400, .8, .28 * v, { ...o }); tone((hu ? 500 : 260) * r, 120, .35, 'sawtooth', .12 * v, { ...o, lp: 900 }); break;
+            case 'piglin': tone((hu ? 300 : 190) * r, hu ? 130 : 110, hu ? .3 : .45, 'square', .2 * v, { ...o, lp: 800, vib: [9, 11] }); noise(.12, 'lowpass', 600, 300, .8, .2 * v, { ...o }); break;
             case 'dragon':
                 tone((de ? 110 : hu ? 200 : 90) * r, de ? 30 : 50, de ? 1.8 : hu ? .5 : 1.1, 'sawtooth', .42 * v, { ...o, lp: 600, vib: [4, 5] }); noise(.6, 'lowpass', 500, 120, .8, .25 * v, { ...o }); break;
             case 'enderman':
@@ -324,7 +327,7 @@ function cornerH(gx, y, gz, cx, cz, fn) {   // 液面某個角落的高度：取
 function liqAt(x, y, z, fn) { const bx = Math.floor(x), by = Math.floor(y), bz = Math.floor(z), b = getBlockGlobal(bx, by, bz); return fn(b) && y < by + liqH(b, getBlockGlobal(bx, by + 1, bz)); }
 const waterActive = new Set(), cropSet = new Set();
 function wake(x, y, z) { if (y > 0 && y < 63) waterActive.add(x + ',' + y + ',' + z); }
-const ITEM = { COAL: 133, RABBIT: 107, IRON: 132, BREAD: 106, SEEDS: 131, HOE: 114, EMERALD: 130, PORK: 100, CHICKEN: 101, BEEF: 102, MUTTON: 103, WHEAT: 104, STICK: 105, PICKAXE: 110, AXE: 111, SHOVEL: 112, SWORD: 113, HELMET: 120, CHEST: 121, LEGS: 122, BOOTS: 123, DIAMOND: 134, DHELM: 124, DCHEST: 125, DLEGS: 126, DBOOTS: 127, SHIELD: 128, BUCKET: 135, WBUCKET: 136, LBUCKET: 137, FLINT: 138, FLINTSTEEL: 139 }; ITEM.EYE = 145; ITEM.PEARL = 146;
+const ITEM = { COAL: 133, RABBIT: 107, IRON: 132, BREAD: 106, SEEDS: 131, HOE: 114, EMERALD: 130, PORK: 100, CHICKEN: 101, BEEF: 102, MUTTON: 103, WHEAT: 104, STICK: 105, PICKAXE: 110, AXE: 111, SHOVEL: 112, SWORD: 113, HELMET: 120, CHEST: 121, LEGS: 122, BOOTS: 123, DIAMOND: 134, DHELM: 124, DCHEST: 125, DLEGS: 126, DBOOTS: 127, SHIELD: 128, BUCKET: 135, WBUCKET: 136, LBUCKET: 137, FLINT: 138, FLINTSTEEL: 139 }; ITEM.EYE = 145; ITEM.PEARL = 146; ITEM.BOW = 147; ITEM.ARROW = 148; ITEM.BLAZEROD = 149; ITEM.BLAZEPOWDER = 155; ITEM.GOLD = 156; ITEM.BONE = 157;
 const CHUNK_SIZE = 16, CHUNK_HEIGHT = 64; let RENDER_DISTANCE = 8; const NETHER_ZONE = 50000, NETHER_X0 = 100000, END_ZONE = -50000, END_X0 = -100000;   // 地獄：位在 X≥50000 的遠方區域，傳送門以 1:8 換算座標   // 顯示距離（區塊數），可用 /rd 2~16 調整
 
 function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -681,7 +684,7 @@ let _wf = 0; setInterval(() => { _wf = (_wf + 1) % 8; waterFrame(_wf); lavaFrame
 const ITEM_PORK = ITEM.PORK, MAX_STACK = 64;
 const NAMES = {[BLOCK.GRASS]:'草方塊',[BLOCK.DIRT]:'泥土',[BLOCK.STONE]:'石頭',[BLOCK.COBBLESTONE]:'圓石',[BLOCK.WOOD]:'原木',[BLOCK.PLANKS]:'木板',[BLOCK.LEAVES]:'樹葉',[BLOCK.BRICK]:'磚塊',[BLOCK.SAND]:'沙子',[BLOCK.GLASS]:'玻璃',[BLOCK.CRAFT]:'合成台',[BLOCK.HAY]:'乾草捆',[ITEM.PORK]:'熟豬肉',[ITEM.CHICKEN]:'熟雞肉',[ITEM.BEEF]:'熟牛肉',[ITEM.MUTTON]:'熟羊肉',[ITEM.WHEAT]:'小麥',[ITEM.EMERALD]:'綠寶石',[ITEM.SEEDS]:'小麥種子',[ITEM.BREAD]:'麵包',[ITEM.IRON]:'鐵錠',[ITEM.RABBIT]:'熟兔肉',[ITEM.HOE]:'石鋤',[BLOCK.BED]:'床',[BLOCK.PATH]:'土徑',[BLOCK.FARM]:'耕地',[BLOCK.LAMP]:'燈',[ITEM.STICK]:'木棒',[ITEM.PICKAXE]:'石鎬',[ITEM.AXE]:'石斧',[ITEM.SHOVEL]:'石鏟',[ITEM.SWORD]:'石劍',[ITEM.HELMET]:'鐵頭盔',[ITEM.CHEST]:'鐵胸甲',[ITEM.LEGS]:'鐵護腿',[ITEM.BOOTS]:'鐵靴子'};
 [['木製','石製','鐵製','鑽石']].forEach(ts => [140, 110, 150, 160].forEach((b, t) => ['鎬','斧','鏟','劍','鋤'].forEach((k, i) => NAMES[b + i] = ts[t] + k)));
-NAMES[31] = '煤炭礦'; NAMES[32] = '鐵礦石'; NAMES[ITEM.COAL] = '煤炭'; Object.assign(NAMES, { 33: '鑽石礦', 34: '箱子', [ITEM.DIAMOND]: '鑽石', [ITEM.DHELM]: '鑽石頭盔', [ITEM.DCHEST]: '鑽石胸甲', [ITEM.DLEGS]: '鑽石護腿', [ITEM.DBOOTS]: '鑽石靴子', [ITEM.SHIELD]: '盾牌', 35: '岩漿', 39: '黑曜石', 135: '桶子', 136: '水桶', 137: '岩漿桶', 40: '地獄岩', 41: '靈魂沙', 42: '螢石', 45: '礫石', 138: '燧石', 139: '打火石', 145: '終界之眼', 146: '終界珍珠', 47: '地獄磚', 48: '磨製黑石磚', 49: '金磚', 50: '終界傳送門框架', 51: '終界傳送門框架（已放眼）', 52: '終界傳送門', 53: '石磚', 54: '終界石' });
+NAMES[31] = '煤炭礦'; NAMES[32] = '鐵礦石'; NAMES[ITEM.COAL] = '煤炭'; Object.assign(NAMES, { 33: '鑽石礦', 34: '箱子', [ITEM.DIAMOND]: '鑽石', [ITEM.DHELM]: '鑽石頭盔', [ITEM.DCHEST]: '鑽石胸甲', [ITEM.DLEGS]: '鑽石護腿', [ITEM.DBOOTS]: '鑽石靴子', [ITEM.SHIELD]: '盾牌', 35: '岩漿', 39: '黑曜石', 135: '桶子', 136: '水桶', 137: '岩漿桶', 40: '地獄岩', 41: '靈魂沙', 42: '螢石', 45: '礫石', 138: '燧石', 139: '打火石', 145: '終界之眼', 146: '終界珍珠', 147: '弓', 148: '箭矢', 149: '烈焰棒', 155: '烈焰粉', 156: '金錠', 157: '骨頭', 47: '地獄磚', 48: '磨製黑石磚', 49: '金磚', 50: '終界傳送門框架', 51: '終界傳送門框架（已放眼）', 52: '終界傳送門', 53: '石磚', 54: '終界石' });
 const slots = Array(36).fill(null);
 const craftGrid = Array(4).fill(null);
 let tableGrid = Array(9).fill(null), tableOpen = false;
@@ -719,7 +722,11 @@ RECIPES_3.push({ p: ['III','I I'], k: { I: _D }, out: { id: ITEM.DHELM, n: 1 } }
     const o = i === 3 ? b + 3 : i === 4 ? b + 4 : b + i; RECIPES_3.push({ p, k: { C: m, S: _S }, out: { id: o, n: 1 } });
 }));
 
-RECIPES_3.push({ in: { [ITEM.PEARL]: 1, [ITEM.FLINT]: 1 }, out: { id: ITEM.EYE, n: 1 } });   // 終界之眼：終界珍珠 + 燧石（珍珠只有終界使者會掉）
+RECIPES_3.push({ in: { [ITEM.PEARL]: 1, [ITEM.BLAZEPOWDER]: 1 }, out: { id: ITEM.EYE, n: 1 } },   // 終界之眼：終界珍珠 + 烈焰粉
+    { in: { [ITEM.BLAZEROD]: 1 }, out: { id: ITEM.BLAZEPOWDER, n: 2 } },
+    { p: [' SW', 'S W', ' SW'], k: { S: _S, W: _W }, out: { id: ITEM.BOW, n: 1 } },   // 弓：木棍 + 小麥（當弓弦）
+    { p: ['F', 'S', 'W'], k: { F: ITEM.FLINT, S: _S, W: _W }, out: { id: ITEM.ARROW, n: 4 } },   // 箭矢：燧石 + 木棍 + 小麥
+    { in: { [BLOCK.GOLDB]: 1 }, out: { id: ITEM.GOLD, n: 9 } }, { p: ['GGG', 'GGG', 'GGG'], k: { G: ITEM.GOLD }, out: { id: BLOCK.GOLDB, n: 1 } });
 const TOOLS = {}; [[140, 0], [110, 1], [150, 2], [160, 3]].forEach(([b, t]) => ['pick', 'axe', 'shovel', 'sword', 'hoe'].forEach((k, i) => TOOLS[b + i] = { kind: k, tier: t }));
 const NEED_PICK = { 3: 0, 4: 0, 8: 0, 31: 0, 32: 1, 33: 2, 39: 3, 40: 0 };
 function toolDmg() { const T = TOOLS[slots[currentSlot]?.id]; return T ? (T.kind === 'sword' ? [5, 6, 7, 8] : [4, 5, 6, 7])[T.tier] : 3; }
@@ -897,6 +904,12 @@ function iconCanvas(id) {
     else if (id === ITEM.SEEDS) { for (const [x,y] of [[3,9],[8,5],[6,11],[10,9],[5,4],[11,3],[12,7],[2,5]]) { g.fillStyle='#7aa23a'; g.fillRect(x,y,2,1); g.fillStyle='#3d5a1c'; g.fillRect(x,y+1,2,1); g.fillStyle='#b4d466'; g.fillRect(x,y,1,1); } }
     else if (id === ITEM.HOE) { g.fillStyle='#6e502c'; for (let i=0;i<12;i++) g.fillRect(2+i,13-i,2,2); g.fillStyle='#888'; g.fillRect(8,2,6,2); g.fillRect(12,2,2,5); }
     else if (id === BLOCK.TORCH) { g.fillStyle = '#4a2f12'; g.fillRect(7, 6, 2, 9); g.fillStyle = '#7a5226'; g.fillRect(7, 6, 1, 9); g.fillStyle = '#e8590c'; g.fillRect(6, 2, 4, 4); g.fillStyle = '#ffb02e'; g.fillRect(7, 3, 2, 3); g.fillStyle = '#fff1a8'; g.fillRect(7, 4, 1, 1); }
+    else if (id === ITEM.GOLD) { const c = newCells(), top = '#fff3a0', fr = '#f2c92c', frD = '#c08a0a', sd = '#d9a81a', sdD = '#a87a0a'; for (let y = 5; y <= 7; y++) for (let x = 6 - (y - 5); x <= 13 - (y - 5); x++) c[y][x] = top; for (let y = 8; y <= 11; y++) for (let x = 3; x <= 10; x++) c[y][x] = y === 11 ? frD : fr; for (let x = 11; x <= 13; x++) for (let y = 8 - (x - 11); y <= 11 - (x - 11); y++) c[y][x] = y === 11 - (x - 11) ? sdD : sd; flushCells(g, c, '#5a4208'); }
+    else if (id === ITEM.BOW) { const c = newCells(); [[9, 1], [10, 2], [11, 3], [12, 4], [12, 5], [13, 6], [13, 7], [13, 8], [13, 9], [12, 10], [12, 11], [11, 12], [10, 13], [9, 14]].forEach(([x, y]) => { c[y][x] = '#9b6a35'; c[y][x - 1] = '#7a5028'; }); for (let y = 2; y <= 13; y++) c[y][7] = '#ececec'; flushCells(g, c, '#3a2410'); }
+    else if (id === ITEM.ARROW) { const c = newCells(); for (let t = 0; t < 10; t++) c[12 - t][3 + t] = t % 2 ? '#b8956a' : '#a2814f'; [[13, 2], [14, 1], [13, 1], [14, 2]].forEach(([x, y]) => c[y][x] = '#aeb4ba'); [[2, 13], [2, 12], [3, 13], [4, 13], [2, 11]].forEach(([x, y]) => c[y][x] = '#f2f2f2'); flushCells(g, c, '#3a2e22'); }
+    else if (id === ITEM.BLAZEROD) { const c = newCells(); for (let t = 0; t < 10; t++) { c[12 - t][3 + t] = '#f2a81c'; c[12 - t][4 + t] = '#ffd23a'; } flushCells(g, c, '#7a4a08'); }
+    else if (id === ITEM.BLAZEPOWDER) { const c = newCells(); for (let y = 6; y <= 12; y++) for (let x = 4; x <= 12; x++) { const d = Math.hypot(x - 8, y - 9.5); if (d < 3.8 + ((x * 7 + y * 3) % 3) * .35) c[y][x] = (x + y) % 3 ? '#ffd23a' : '#f2a81c'; } flushCells(g, c, '#7a4a08'); }
+    else if (id === ITEM.BONE) { const c = newCells(); for (let t = 1; t < 9; t++) { c[12 - t][3 + t] = '#e8e4d4'; c[12 - t][4 + t] = '#cfcab8'; } [[2, 13], [3, 13], [2, 12], [13, 2], [12, 2], [13, 3]].forEach(([x, y]) => c[y][x] = '#f2eee0'); flushCells(g, c, '#6a665a'); }
     else if (id === ITEM.PEARL) { g.fillStyle = '#06322e'; g.fillRect(5, 3, 6, 10); g.fillRect(3, 5, 10, 6); g.fillRect(4, 4, 8, 8); g.fillStyle = '#0f6b60'; g.fillRect(5, 5, 6, 6); g.fillRect(4, 6, 8, 4); g.fillStyle = '#2fb59a'; g.fillRect(5, 5, 4, 4); g.fillStyle = '#b8fff0'; g.fillRect(6, 5, 2, 2); }
     else if (id === ITEM.EYE) { g.fillStyle = '#0b3d2e'; g.fillRect(5, 3, 6, 10); g.fillRect(3, 5, 10, 6); g.fillRect(4, 4, 8, 8); g.fillStyle = '#1f9e78'; g.fillRect(5, 5, 6, 6); g.fillRect(4, 6, 8, 4); g.fillStyle = '#7ff0c8'; g.fillRect(6, 6, 4, 4); g.fillStyle = '#04120c'; g.fillRect(7, 7, 2, 2); g.fillStyle = '#e6fff6'; g.fillRect(6, 6, 1, 1); }
     else if (id === ITEM.FLINT) { g.fillStyle = '#1b1b20'; g.fillRect(4, 8, 8, 5); g.fillRect(6, 5, 5, 4); g.fillRect(8, 3, 2, 3); g.fillStyle = '#44444e'; g.fillRect(5, 9, 5, 2); g.fillRect(7, 6, 2, 2); g.fillStyle = '#8e8e9c'; g.fillRect(6, 9, 1, 1); g.fillRect(8, 6, 1, 1); }
@@ -1301,7 +1314,7 @@ const DROPS = {[BLOCK.CRAFT]:BLOCK.CRAFT,[BLOCK.HAY]:ITEM.WHEAT,[BLOCK.GRASS]:BL
 HARDNESS[46] = .05; NAMES[46] = '火把'; HARDNESS[31] = 3; HARDNESS[32] = 3.5; DROPS[31] = ITEM.COAL; DROPS[32] = ITEM.IRON; HARDNESS[33] = 4; HARDNESS[39] = 10; HARDNESS[40] = 1; HARDNESS[41] = .8; HARDNESS[42] = .5; HARDNESS[45] = .6; HARDNESS[43] = HARDNESS[44] = Infinity; for (let i = 35; i <= 38; i++) HARDNESS[i] = Infinity; HARDNESS[34] = 2.5; DROPS[33] = ITEM.DIAMOND;
 HARDNESS[47] = 2; HARDNESS[48] = 3; HARDNESS[49] = 3; HARDNESS[50] = HARDNESS[51] = HARDNESS[52] = Infinity; HARDNESS[53] = 2.5; HARDNESS[54] = 2; NEED_PICK[47] = NEED_PICK[48] = NEED_PICK[53] = NEED_PICK[54] = 0; NEED_PICK[49] = 1;
 let hp = 20, hunger = 20, lastHurt = 0, regenT = 0, hungerT = 0;
-let respawnPoint = null, dragonDefeated = false;   // 床的重生點、終界龍是否已被擊敗
+let respawnPoint = null, dragonDefeated = false, witherT = 0, witherAcc = 0, bowDrawing = false, bowT = 0;   // 床的重生點、終界龍是否已被擊敗
 const heartsEl = document.getElementById('hearts'), hungerEl = document.getElementById('hunger'), hurtEl = document.getElementById('hurt');
 function drawHearts() {
     let h = '';
@@ -1465,15 +1478,17 @@ function structMobTick() {   // 玩家走近豬布林堡壘、周圍區塊都載
     for (const s of structMobs.values()) {
         if (s.done) continue; const dx = s.x - player.pos.x, dz = s.z - player.pos.z; if (dx * dx + dz * dz > 2500) continue;
         if (!chunkLoaded(s.x - 12, s.z - 12) || !chunkLoaded(s.x + 12, s.z + 12) || !chunkLoaded(s.x - 12, s.z + 12) || !chunkLoaded(s.x + 12, s.z - 12)) continue;
-        s.done = true; for (const [a, b] of [[10.5, .5], [-9.5, .5], [.5, -9.5], [.5, 10.5]]) makeMob('pigman', s.x + a, s.y + 1, s.z + b);
+        s.done = true;
+        if (s.kind === 'fort') { for (const [a, b] of [[5.5, 5.5], [-5.5, 5.5], [5.5, -5.5], [-5.5, -5.5]]) makeMob('witherskel', s.x + a, s.y + 1, s.z + b); for (const [a, b] of [[3.5, .5], [-2.5, .5]]) makeMob('blaze', s.x + a, s.y + 4, s.z + b); }
+        else for (const [a, b] of [[10.5, .5], [-9.5, .5], [.5, -9.5], [.5, 10.5]]) makeMob('piglin', s.x + a, s.y + 1, s.z + b);
     }
 }
 function fillChestAt(wx, y, wz, kind) {   // 箱子戰利品：以座標當亂數種子，同一個箱子永遠一樣；已被玩家動過（chestData 已有）就不覆蓋
     const key = wx + ',' + y + ',' + wz; if (chestData.has(key)) return;
     const r = mulberry32((SEED ^ Math.imul(wx, 73856093) ^ Math.imul(y, 19349663) ^ Math.imul(wz, 83492791)) >>> 0), items = [];
     const add = (id, lo, hi, p) => { if (r() < (p === undefined ? 1 : p)) items.push({ id, n: lo + Math.floor(r() * (hi - lo + 1)) }); };
-    if (kind === 'fort') { add(ITEM.DIAMOND, 1, 2, .45); add(ITEM.IRON, 2, 6, .9); add(ITEM.COAL, 3, 8, .7); add(BLOCK.GOLDB, 1, 2, .5); add(BLOCK.NBRICK, 6, 16, .9); add(ITEM.FLINT, 1, 3, .5); add(ITEM.BREAD, 2, 5, .6); }
-    else if (kind === 'bast') { add(BLOCK.GOLDB, 3, 8, 1); add(ITEM.DIAMOND, 1, 3, .7); add(ITEM.EMERALD, 1, 4, .5); add(ITEM.IRON, 3, 8, .8); add(BLOCK.BLACKSTONE, 8, 20, .9); add(ITEM.DBOOTS, 1, 1, .15); add(ITEM.DHELM, 1, 1, .1); add(ITEM.PORK, 3, 8, .6); }
+    if (kind === 'fort') { add(ITEM.DIAMOND, 1, 2, .45); add(ITEM.IRON, 2, 6, .9); add(ITEM.COAL, 3, 8, .7); add(BLOCK.GOLDB, 1, 2, .5); add(BLOCK.NBRICK, 6, 16, .9); add(ITEM.GOLD, 2, 5, .35); add(ITEM.BOW, 1, 1, .2); add(ITEM.ARROW, 4, 12, .4); add(ITEM.FLINT, 1, 3, .5); add(ITEM.BREAD, 2, 5, .6); }
+    else if (kind === 'bast') { add(BLOCK.GOLDB, 3, 8, 1); add(ITEM.GOLD, 6, 14, 1); add(ITEM.DIAMOND, 1, 3, .7); add(ITEM.EMERALD, 1, 4, .5); add(ITEM.IRON, 3, 8, .8); add(BLOCK.BLACKSTONE, 8, 20, .9); add(ITEM.DBOOTS, 1, 1, .15); add(ITEM.DHELM, 1, 1, .1); add(ITEM.PORK, 3, 8, .6); }
     else { add(ITEM.DIAMOND, 1, 3, .6); add(ITEM.IRON, 3, 9, .9); add(ITEM.BREAD, 3, 8, .9); add(ITEM.COAL, 4, 10, .8); add(BLOCK.SBRICK, 8, 16, .6); }
     const arr = Array(27).fill(null); for (const it of items) { let i = Math.floor(r() * 27), t = 0; while (arr[i] && t++ < 27) i = (i + 1) % 27; arr[i] = it; }
     chestData.set(key, arr);
@@ -1484,6 +1499,7 @@ const FTOWERS = [[6, 48, 1, 0], [90, 48, -1, 0], [48, 6, 0, 1], [48, 90, 0, -1]]
 function genFortress(ch, ox, oz) {   // 地獄堡壘：十字形廊道（有頂的走廊與開放的橋交替）＋中央大廳＋四端塔樓，箱子在大廳與塔樓
     const rx = Math.floor(ox / FREG), rz = Math.floor(oz / FREG), F = fortressInfo(rx, rz); if (!F) return;
     const y0 = F.y0, bx = rx * FREG, bz = rz * FREG, A = BLOCK.AIR, NB = BLOCK.NBRICK;
+    if (!structMobs.has('f' + bx + ',' + bz)) structMobs.set('f' + bx + ',' + bz, { kind: 'fort', x: bx + 48, y: y0, z: bz + 48, done: false });
     for (let x = 0; x < 16; x++) for (let z = 0; z < 16; z++) {
         const lx = ox + x - bx, lz = oz + z - bz, dx = lx - 48, dz = lz - 48, P = (h, b) => nbPut(ch, x, y0 + h, z, b);
         if (Math.abs(dx) <= 8 && Math.abs(dz) <= 8) {   // 中央大廳 17×17
@@ -1902,6 +1918,7 @@ function spawn() {
     player.fallFrom = player.pos.y;
 }
 function die() {
+    witherT = 0; burnT = 0; bowDrawing = false;
     sfx('death'); dropAll(); clearZombies(); hp = 20; drawHearts(); mining = null; mouseDown = false;
     spawn();
     document.getElementById('mc-title').textContent = '你死了！';
@@ -2087,11 +2104,32 @@ function makeMob(type, x, y, z, prof, nid) {
         for (const sx of [-.375, .375]) { const a = new THREE.Group(); a.position.set(sx, 1.35, 0); a.rotation.x = -1.2; g.add(a); P(.22, .7, .22, 0, -.35, 0, pk, a); P(.24, .3, .24, 0, -.12, 0, 0x6f8a4a, a); }
         P(.08, .55, .08, .38, 1.0, .5, gd); P(.2, .06, .1, .38, .75, .5, 0xb8901a);
         for (const sx of [-.13, .13]) L(.25, .7, .25, sx, .35, 0, 0x4a5e30, sx < 0 ? 0 : Math.PI);
+    } else if (type === 'piglin') {   // 豬布林：橘褐色豬臉、大耳朵、獠牙、金腰帶、金劍（和殭屍豬人的綠灰膚色不同）
+        const sk = 0xe0a075, dk = 0xb9715a, cl = 0x7a4a2a, gd = 0xf2c230;
+        P(.5, .7, .26, 0, 1.05, 0, cl); P(.54, .1, .28, 0, .8, 0, gd);
+        P(.6, .5, .5, 0, 1.6, 0, sk); P(.3, .22, .12, 0, 1.52, .31, dk); P(.06, .08, .02, -.07, 1.52, .375, 0x5a2a20); P(.06, .08, .02, .07, 1.52, .375, 0x5a2a20);
+        P(.07, .12, .04, -.14, 1.4, .33, 0xf5f0dc); P(.07, .12, .04, .14, 1.4, .33, 0xf5f0dc);
+        P(.1, .1, .02, -.14, 1.68, .26, 0xffffff); P(.05, .08, .02, -.14, 1.68, .27, 0x201010); P(.1, .1, .02, .14, 1.68, .26, 0xffffff); P(.05, .08, .02, .14, 1.68, .27, 0x201010);
+        P(.1, .36, .3, -.38, 1.72, 0, dk); P(.1, .36, .3, .38, 1.72, 0, dk); P(.62, .1, .52, 0, 1.9, 0, 0x4a2a1a);
+        for (const sx of [-.375, .375]) { const a = new THREE.Group(); a.position.set(sx, 1.35, 0); a.rotation.x = -1.1; g.add(a); P(.2, .7, .2, 0, -.35, 0, sk, a); P(.22, .3, .22, 0, -.12, 0, cl, a); }
+        P(.08, .55, .08, .38, 1.0, .5, gd); P(.2, .06, .1, .38, .75, .5, 0xb8901a);
+        for (const sx of [-.13, .13]) L(.24, .7, .24, sx, .35, 0, 0x3a2418, sx < 0 ? 0 : Math.PI);
+    } else if (type === 'skeleton' || type === 'witherskel') {   // 骷髏（拿弓）／凋零骷髏（黑色、較高、拿石劍）
+        const w = type === 'witherskel', bn = w ? 0x2c2c30 : 0xd8d8cc, dk = w ? 0x151518 : 0x9a9a8e; if (w) g.scale.setScalar(1.25);
+        P(.4, .7, .2, 0, 1.05, 0, bn); for (let i = 0; i < 3; i++) P(.42, .05, .22, 0, 1.25 - i * .15, 0, dk); P(.42, .12, .22, 0, .72, 0, bn);
+        P(.5, .5, .5, 0, 1.6, 0, bn); P(.12, .12, .02, -.13, 1.62, .26, dk); P(.12, .12, .02, .13, 1.62, .26, dk); P(.06, .1, .02, 0, 1.52, .26, dk); P(.3, .04, .02, 0, 1.42, .26, dk);
+        for (const sx of [-.3, .3]) { const a = new THREE.Group(); a.position.set(sx, 1.35, 0); a.rotation.x = -1.35; g.add(a); P(.1, .7, .1, 0, -.35, 0, bn, a); }
+        if (w) P(.07, .75, .07, .3, 1.3, .6, 0x5a5a5a); else { P(.05, .8, .05, .3, 1.3, .6, 0x8a5a2b); P(.02, .8, .02, .3, 1.3, .55, 0xe8e8e8); }
+        for (const sx of [-.12, .12]) L(.12, .7, .12, sx, .35, 0, bn, sx < 0 ? 0 : Math.PI);
+    } else if (type === 'blaze') {   // 烈焰人：黃色的頭，周圍三圈旋轉的烈焰棒
+        const yl = 0xf2c230, or = 0xff9a20;
+        P(.5, .5, .5, 0, 1.7, 0, yl); P(.1, .1, .02, -.13, 1.75, .26, 0x222222); P(.1, .1, .02, .13, 1.75, .26, 0x222222); P(.18, .05, .02, 0, 1.58, .26, 0x553300);
+        const rods = []; [[.5, .55, 4, 2.2], [.5, .95, 4, -2.6], [.5, 1.35, 4, 1.8]].forEach(([r, y, n, sp]) => { const rg = new THREE.Group(); rg.position.set(0, y, 0); rg.userData.sp = sp; g.add(rg); for (let i = 0; i < n; i++) { const a = i / n * 6.283 + y; P(.1, .5, .1, Math.cos(a) * r, 0, Math.sin(a) * r, or, rg); } rods.push(rg); }); g.userData.rods = rods;
     } else if (type === 'enderman') {   // 終界使者：全黑高個子、紫色眼睛、細長四肢
         const bk = 0x15111b, ey = 0xe070ff;
         P(.5, .75, .26, 0, 1.85, 0, bk); P(.5, .5, .5, 0, 2.5, 0, bk); P(.16, .06, .02, -.13, 2.5, .26, ey); P(.16, .06, .02, .13, 2.5, .26, ey);
         for (const sx of [-.36, .36]) { const a = new THREE.Group(); a.position.set(sx, 2.15, 0); g.add(a); P(.12, 1.45, .12, 0, -.72, 0, bk, a); }
-        for (const sx of [-.13, .13]) L(.14, 1.45, .14, sx, 0, 0, 0x100d15, sx < 0 ? 0 : Math.PI);
+        for (const sx of [-.13, .13]) L(.14, 1.45, .14, sx, .725, 0, 0x100d15, sx < 0 ? 0 : Math.PI);
     } else if (type === 'dragon') {   // 終界龍：黑色巨龍、會拍動的翅膀
         const bk = 0x17141d, pl = 0x2a2234, ey = 0xe070ff; g.rotation.order = 'YXZ'; const wings = [];
         P(1.7, 1.4, 3.4, 0, 1.4, 0, bk); P(1.2, 1.1, 1.4, 0, 1.55, 2.3, bk); P(1.3, 1.0, 1.5, 0, 1.75, 3.5, bk); P(.8, .45, 1.1, 0, 1.55, 4.6, 0x100d15);
@@ -2108,12 +2146,13 @@ function makeMob(type, x, y, z, prof, nid) {
     }
     g.userData.legs = legs;
     g.position.set(x, y, z); scene.add(g);
-    const _mob = { type, g, mats, pos: new THREE.Vector3(x, y, z), tp: new THREE.Vector3(x, y, z), vy: 0, kx: 0, kz: 0, hp: type==='dragon' ? 150 : type==='enderman' ? 40 : type==='horse' ? 15 : type==='wolf' ? 8 : type==='rabbit' ? 3 : PASSIVE.includes(type) ? 10 : 20, angry: false,
-        w: type==='dragon' ? 2 : type==='enderman' ? .6 : type==='horse' ? 1.1 : type==='rabbit' ? .4 : type==='wolf' ? .6 : ['pig','cow','sheep'].includes(type) ? .8 : type==='chicken' ? .5 : .6, h: type==='dragon' ? 2.4 : type==='enderman' ? 2.9 : type==='horse' ? 1.6 : type==='rabbit' ? .5 : type==='wolf' ? .85 : PASSIVE.includes(type) ? .9 : 1.85, ang: Math.random() * 6.283, walking: false, t: 0, cd: 0, flash: 0, onGround: false };
+    const _mob = { type, g, mats, pos: new THREE.Vector3(x, y, z), tp: new THREE.Vector3(x, y, z), vy: 0, kx: 0, kz: 0, hp: type==='witherskel' ? 30 : type==='dragon' ? 150 : type==='enderman' ? 40 : type==='horse' ? 15 : type==='wolf' ? 8 : type==='rabbit' ? 3 : PASSIVE.includes(type) ? 10 : 20, angry: false,
+        w: type==='witherskel' ? .7 : type==='dragon' ? 2 : type==='enderman' ? .6 : type==='horse' ? 1.1 : type==='rabbit' ? .4 : type==='wolf' ? .6 : ['pig','cow','sheep'].includes(type) ? .8 : type==='chicken' ? .5 : .6, h: type==='witherskel' ? 2.4 : type==='dragon' ? 2.4 : type==='enderman' ? 2.9 : type==='horse' ? 1.6 : type==='rabbit' ? .5 : type==='wolf' ? .85 : PASSIVE.includes(type) ? .9 : 1.85, ang: Math.random() * 6.283, walking: false, t: 0, cd: 0, flash: 0, onGround: false };
     if (type === 'dragon') _mob.hr = 2.6;   // 龍的受擊範圍比一般怪物大
     _mob.nid = nid !== undefined ? nid : nidC++; mobs.push(_mob); mobMap.set(_mob.nid, _mob); return _mob;
 }
 function animMob(m, mv, dt) {
+    if (m.g.userData.rods) for (const r of m.g.userData.rods) r.rotation.y += dt * r.userData.sp;
     if (m.g.userData.wings) { m.wt = (m.wt || 0) + dt * 5; for (const w of m.g.userData.wings) w.p.rotation.z = w.side * (Math.sin(m.wt) * .55 + .08); }   // 依實際移動距離擺腿：走得越快擺幅越大，停下來腿會回正
     const p = m.g.position, d = m._lx === undefined ? 0 : Math.min(.6, Math.hypot(p.x - m._lx, p.z - m._lz));
     m._lx = p.x; m._lz = p.z;
@@ -2146,19 +2185,22 @@ function spawnVillagers(V) {
     });
 }
 function spawnNetherMob(c) {
-    if (mobs.filter(m => m.type === 'pigman').length >= 6 + 3 * remotes.size) return;
+    const cnt = t => mobs.filter(m => m.type === t).length, pigCap = cnt('pigman') >= 6 + 3 * remotes.size;
     const a = Math.random() * 6.283, d = 12 + Math.random() * 14, x = Math.floor(c.x + Math.sin(a) * d), z = Math.floor(c.z + Math.cos(a) * d);
     if (!chunkLoaded(x, z)) return;
     for (let y = 14 + Math.floor(Math.random() * 36); y > 13; y--) {
         const b = getBlockGlobal(x, y, z);
-        if ((b === BLOCK.NETHERRACK || b === BLOCK.SOULSAND) && getBlockGlobal(x, y + 1, z) === BLOCK.AIR && getBlockGlobal(x, y + 2, z) === BLOCK.AIR) { makeMob('pigman', x + .5, y + 1, z + .5); return; }
+        const a1 = getBlockGlobal(x, y + 1, z) === BLOCK.AIR && getBlockGlobal(x, y + 2, z) === BLOCK.AIR;
+        if ((b === BLOCK.NETHERRACK || b === BLOCK.SOULSAND) && a1) { if (!pigCap) makeMob('pigman', x + .5, y + 1, z + .5); return; }   // 殭屍豬人：地獄荒地
+        if (b === BLOCK.NBRICK && a1) { if (Math.random() < .3 && cnt('blaze') < 3 && getBlockGlobal(x, y + 3, z) === BLOCK.AIR) makeMob('blaze', x + .5, y + 2, z + .5); else if (cnt('witherskel') < 6) makeMob('witherskel', x + .5, y + 1, z + .5); return; }   // 地獄堡壘
+        if (b === BLOCK.BLACKSTONE && a1) { if (cnt('piglin') < 6) makeMob('piglin', x + .5, y + 1, z + .5); return; }   // 豬布林堡壘
     }
 }
 function trySpawn() {
     { const cs = [player.pos, ...[...remotes.values()].map(r => r.target)], c0 = cs[Math.floor(Math.random() * cs.length)]; if (c0.x >= NETHER_ZONE) { spawnNetherMob(c0); return; } if (c0.x <= END_ZONE) { spawnEndMob(c0); return; } }
-    const passive = mobs.filter(m => PASSIVE.includes(m.type)).length, zs = mobs.filter(m=>m.type==='zombie').length;
+    const passive = mobs.filter(m => PASSIVE.includes(m.type)).length, zs = mobs.filter(m=>m.type==='zombie'||m.type==='skeleton').length;
     const types=SPAWN_TYPES, zcap = isNight ? 6 + 3 * remotes.size : 0;
-    const type = (isNight && Math.random() < .05 && mobs.filter(m => m.type === 'enderman').length < 2) ? 'enderman' : passive < 14 + 6 * remotes.size && (zs >= zcap || Math.random() < 0.7) ? types[Math.floor(Math.random()*types.length)] : zs < zcap ? 'zombie' : null;
+    const type = (Math.random() < (isNight ? .3 : .08) && mobs.filter(m => m.type === 'enderman').length < 3 + remotes.size) ? 'enderman' : passive < 14 + 6 * remotes.size && (zs >= zcap || Math.random() < 0.7) ? types[Math.floor(Math.random()*types.length)] : zs < zcap ? (Math.random() < .4 ? 'skeleton' : 'zombie') : null;
     if (!type) return;
     const a = Math.random() * 6.283, d = 14 + Math.random() * 14;
     const ctr = [player.pos, ...[...remotes.values()].map(r => r.target)], cp0 = ctr[Math.floor(Math.random() * ctr.length)];
@@ -2167,7 +2209,7 @@ function trySpawn() {
     for (let y = CHUNK_HEIGHT - 2; y > 0; y--) {
         const b = getBlockGlobal(x, y, z);
         if (b === BLOCK.AIR) continue;
-        if (b === BLOCK.GRASS || (type === 'zombie' && (b === BLOCK.SAND || b === BLOCK.DIRT))) makeMob(type, x + .5, y + 1, z + .5);
+        if (b === BLOCK.GRASS || ((type === 'zombie' || type === 'skeleton' || type === 'enderman') && (b === BLOCK.SAND || b === BLOCK.DIRT || (type !== 'zombie' && b === BLOCK.STONE)))) makeMob(type, x + .5, y + 1, z + .5);
         return;
     }
 }
@@ -2562,8 +2604,124 @@ function spawnEndMob(c) {
     if (!chunkLoaded(x, z)) return;
     for (let y = 62; y > 20; y--) { const b = getBlockGlobal(x, y, z); if (b === BLOCK.AIR) continue; if (b === BLOCK.ENDSTONE && getBlockGlobal(x, y + 1, z) === BLOCK.AIR && getBlockGlobal(x, y + 2, z) === BLOCK.AIR && getBlockGlobal(x, y + 3, z) === BLOCK.AIR) makeMob('enderman', x + .5, y + 1, z + .5); return; }
 }
+const projs = [], _bp = new THREE.Vector3();
+const _arrowGeo = new THREE.BoxGeometry(.05, .05, .7), _arrowMat = new THREE.MeshBasicMaterial({ color: 0xd8d0b0 }), _fireGeo = new THREE.BoxGeometry(.32, .32, .32), _fireMat = new THREE.MeshBasicMaterial({ color: 0xff8a1a });
+const bowBar = document.createElement('div'); bowBar.style.cssText = 'position:fixed;left:50%;top:56%;transform:translateX(-50%);width:90px;height:8px;background:rgba(0,0,0,.55);border:2px solid #000;z-index:12;display:none;pointer-events:none';
+bowBar.innerHTML = '<div style="height:100%;width:0;background:#f0e060"></div>'; document.body.appendChild(bowBar);
+function spawnProj(kind, owner, x, y, z, vx, vy, vz, dmg) {
+    const mesh = new THREE.Mesh(kind === 'fire' ? _fireGeo : _arrowGeo, kind === 'fire' ? _fireMat : _arrowMat); mesh.position.set(x, y, z); scene.add(mesh);
+    projs.push({ id: nidC++, kind, owner, mesh, p: new THREE.Vector3(x, y, z), v: new THREE.Vector3(vx, vy, vz), dmg, life: 0, stuck: 0 });
+}
+function takeOne(id) { for (let i = 0; i < slots.length; i++) { const s = slots[i]; if (s && s.id === id) { if (--s.n <= 0) slots[i] = null; updateHotbar(); return true; } } return false; }
+function fireBow() {   // 放開右鍵：拉得越久越快越痛（滿弓約 9 點）
+    const power = Math.min(1, bowT / .9), st = slots[currentSlot]; bowDrawing = false; bowBar.style.display = 'none';
+    if (!st || st.id !== ITEM.BOW || power < .15) return;
+    if (!godMode && !takeOne(ITEM.ARROW)) { toast('沒有箭矢'); return; }
+    _dir.set(0, 0, -1).applyQuaternion(camera.quaternion).normalize(); const sp = 12 + power * 34, c = camera.position;
+    const ax = c.x + _dir.x * .7, ay = c.y + _dir.y * .7 - .1, az = c.z + _dir.z * .7;
+    spawnProj('arrow', 'player', ax, ay, az, _dir.x * sp, _dir.y * sp, _dir.z * sp, 2 + power * 7); sfx('throw');
+    if (isClient) netSend({ t: 'pa', x: ax, y: ay, z: az, vx: _dir.x * sp, vy: _dir.y * sp, vz: _dir.z * sp });   // 讓房主和其他訪客也看得到這支箭
+}
+function shootArrowAt(m, tp) {   // 骷髏射箭（有預判重力與一點誤差）
+    const sx = m.pos.x, sy = m.pos.y + 1.5, sz = m.pos.z, tx = tp.x, ty = tp.y + 1.2, tz = tp.z, d = Math.hypot(tx - sx, ty - sy, tz - sz) || 1, spd = 26, e = () => (Math.random() - .5) * 2.2;
+    spawnProj('arrow', 'mob', sx, sy, sz, (tx - sx) / d * spd + e(), (ty - sy) / d * spd + d * .35 + e() * .6, (tz - sz) / d * spd + e(), 3); sfxAt('mob', 'skeleton:say', sx, sy, sz);
+}
+function shootFire(m, tp) {
+    const sx = m.pos.x, sy = m.pos.y + 1.2, sz = m.pos.z, d = Math.hypot(tp.x - sx, tp.y + 1 - sy, tp.z - sz) || 1;
+    spawnProj('fire', 'mob', sx, sy, sz, (tp.x - sx) / d * 13, (tp.y + 1 - sy) / d * 13, (tp.z - sz) / d * 13, 5); sfxAt('mob', 'blaze:say', sx, sy, sz);
+}
+function removeProj(i) { scene.remove(projs[i].mesh); projs.splice(i, 1); }
+const cProjs = new Map();   // 訪客端：房主傳來的箭矢／火球（只負責畫，傷害由房主判定）
+function applyProjSnap(m) {
+    const seen = new Set(), now = performance.now();
+    for (const [id, k, x, y, z, vx, vy, vz, by] of m.p) {
+        if (by && by === myId) continue;   // 自己射的箭本機已經有了
+        seen.add(id); let c = cProjs.get(id);
+        if (!c) { const mesh = new THREE.Mesh(k ? _fireGeo : _arrowGeo, k ? _fireMat : _arrowMat); mesh.position.set(x, y, z); scene.add(mesh); c = { mesh, k }; cProjs.set(id, c); }
+        c.x = x; c.y = y; c.z = z; c.vx = vx; c.vy = vy; c.vz = vz; c.t = now;
+    }
+    for (const [id, c] of cProjs) if (!seen.has(id)) { scene.remove(c.mesh); cProjs.delete(id); }
+}
+function updateClientProjs() {
+    const now = performance.now();
+    for (const c of cProjs.values()) {
+        const dt = Math.min(.3, (now - c.t) / 1000); c.mesh.position.set(c.x + c.vx * dt, c.y + c.vy * dt - (c.k ? 0 : 9 * dt * dt), c.z + c.vz * dt);
+        if (c.vx * c.vx + c.vy * c.vy + c.vz * c.vz > 1e-9) c.mesh.lookAt(c.mesh.position.x + c.vx, c.mesh.position.y + c.vy, c.mesh.position.z + c.vz);
+    }
+}
+function projHitMob(q) {
+    for (const m of mobs) {
+        if (m.hp <= 0) continue;
+        const rr = m.hr || m.w / 2 + .25, cy = m.pos.y + m.h / 2, hh = m.hr || m.h / 2 + .1;
+        if (Math.hypot(q.p.x - m.pos.x, q.p.z - m.pos.z) < rr && Math.abs(q.p.y - cy) < hh) return m;
+    }
+    return null;
+}
+function updateProjectiles(dt) {
+    if (isClient) updateClientProjs();
+    if (bowDrawing) {
+        if (invOpen || chatOpen || slots[currentSlot]?.id !== ITEM.BOW) bowDrawing = false;
+        else { bowT += dt; bowBar.style.display = 'block'; bowBar.firstChild.style.width = Math.min(1, bowT / .9) * 100 + '%'; }
+    }
+    if (!bowDrawing) bowBar.style.display = 'none';
+    for (let i = projs.length - 1; i >= 0; i--) {
+        const q = projs[i]; q.life += dt;
+        if (q.stuck > 0) { q.stuck -= dt; if (q.stuck <= 0) removeProj(i); continue; }
+        if (q.kind === 'arrow') q.v.y -= 18 * dt;
+        const steps = Math.max(1, Math.ceil(q.v.length() * dt / .4)), sdt = dt / steps; let dead = false;
+        for (let s = 0; s < steps && !dead; s++) {
+            q.p.x += q.v.x * sdt; q.p.y += q.v.y * sdt; q.p.z += q.v.z * sdt;
+            const b = getBlockGlobal(Math.floor(q.p.x), Math.floor(q.p.y), Math.floor(q.p.z));
+            if (b !== BLOCK.AIR && !isW(b) && !isL(b) && !isPortal(b) && !isCrop(b) && b !== BLOCK.TORCH) { if (q.kind === 'fire') dead = true; else { q.stuck = 5; q.sd = q.v.clone().normalize().multiplyScalar(.001); q.v.set(0, 0, 0); sfx('hit'); } break; }
+            if (q.owner === 'player') {
+                const m = projHitMob(q);
+                if (m) {
+                    dead = true; sfxAt('mob', m.type + ':hurt', m.pos.x, m.pos.y + .5, m.pos.z); m.flash = .25;
+                    if (!isClient) { m.hp -= q.dmg; if (m.type === 'wolf' || m.type === 'pigman' || m.type === 'enderman') m.angry = true; if (m.type === 'enderman') enderTeleport(m, m.pos.x, m.pos.z, 4, 12); }
+                    else netSend({ t: 'am', nid: m.nid, dmg: Math.min(10, q.dmg), kx: 0, kz: 0 });
+                }
+            } else if (q.owner === 'remote') { if (projHitMob(q)) dead = true; }   // 訪客射的箭：房主只負責畫，傷害由訪客自己判定後回報
+            else {
+                const dx = q.p.x - player.pos.x, dz = q.p.z - player.pos.z;
+                if (Math.abs(dx) < .45 && Math.abs(dz) < .45 && q.p.y > player.pos.y - .1 && q.p.y < player.pos.y + 1.9) { dead = true; hurt(q.dmg, q.p.x - q.v.x, q.p.z - q.v.z); if (q.kind === 'fire') { burnT = 4; lavaT = 0; } }
+                else for (const [rid, r] of remotes) if (Math.abs(q.p.x - r.target.x) < .45 && Math.abs(q.p.z - r.target.z) < .45 && q.p.y > r.target.y - .1 && q.p.y < r.target.y + 1.9) { dead = true; hurtPlayer(rid, q.dmg, q.p.x - q.v.x, q.p.z - q.v.z); break; }
+            }
+        }
+        if (dead || q.life > 12 || q.p.y < -20) { removeProj(i); continue; }
+        q.mesh.position.copy(q.p); if (q.v.lengthSq() > .01) q.mesh.lookAt(q.p.x + q.v.x, q.p.y + q.v.y, q.p.z + q.v.z);
+    }
+}
+function witherTick(dt) { if (witherT > 0) { witherT -= dt; witherAcc += dt; if (witherAcc >= 1) { witherAcc = 0; hurt(1); } } }
+function tradePiglin(m) {   // 手持金錠右鍵豬布林：2 秒後丟出一樣東西
+    const st = slots[currentSlot]; if (!st || st.id !== ITEM.GOLD) return false;
+    if (isClient) { toast('只有房主可以和豬布林交易'); return true; }
+    if (m.trade) return true; useSel(); m.trade = 2; sfxAt('mob', 'piglin:say', m.pos.x, m.pos.y + 1, m.pos.z); toast('豬布林正在檢查金錠…'); return true;
+}
+function piglinBarter(m) {
+    const T = [[ITEM.PEARL, 2, 4, 10], [BLOCK.OBS, 1, 1, 10], [BLOCK.GRAVEL, 8, 16, 10], [BLOCK.SOULSAND, 2, 8, 10], [BLOCK.NBRICK, 2, 8, 10], [ITEM.FLINT, 3, 9, 10], [ITEM.IRON, 1, 3, 8], [BLOCK.GLOWSTONE, 2, 4, 6], [ITEM.COAL, 3, 8, 6], [ITEM.LBUCKET, 1, 1, 3]];
+    let w = T.reduce((a, t) => a + t[3], 0) * Math.random(), pk = T[0]; for (const t of T) { w -= t[3]; if (w <= 0) { pk = t; break; } }
+    const n = pk[1] + Math.floor(Math.random() * (pk[2] - pk[1] + 1)), dx = player.pos.x - m.pos.x, dz = player.pos.z - m.pos.z, d = Math.hypot(dx, dz) || 1;
+    spawnDrop(pk[0], n, m.pos.x, m.pos.y + 1.2, m.pos.z, dx / d * 3, 3, dz / d * 3); sfxAt('mob', 'piglin:say', m.pos.x, m.pos.y + 1, m.pos.z);
+}
+function updateBlaze(m, dt, tp, tid, dist) {   // 烈焰人：飄在空中，保持 6~12 格距離，連發 3 顆火球
+    m.cd -= dt; m.flash -= dt; m.bt = (m.bt || 0) + dt;
+    let vx = 0, vz = 0, vy = 0;
+    if (dist < 28) {
+        m.ang = Math.atan2(tp.x - m.pos.x, tp.z - m.pos.z);
+        const sp = dist > 12 ? 2.4 : dist < 6 ? -2.4 : 0, side = Math.sin(m.bt * .8) * 1.4;
+        vx = Math.sin(m.ang) * sp + Math.cos(m.ang) * side; vz = Math.cos(m.ang) * sp - Math.sin(m.ang) * side;
+        vy = (tp.y + 2.5 + Math.sin(m.bt * 1.3) * 1.2 - m.pos.y) * 1.2;
+        if (m.cd <= 0 && dist < 24) { m.cd = 3.4; m.burst = 3; m.bs = 0; }
+        if (m.burst > 0) { m.bs -= dt; if (m.bs <= 0) { m.bs = .35; m.burst--; shootFire(m, tp); } }
+    } else vy = Math.sin(m.bt) * .4;
+    _bp.set(m.pos.x + vx * dt, m.pos.y, m.pos.z); if (!boxHit(_bp, m.w, m.h)) m.pos.x = _bp.x;
+    _bp.set(m.pos.x, m.pos.y, m.pos.z + vz * dt); if (!boxHit(_bp, m.w, m.h)) m.pos.z = _bp.z;
+    _bp.set(m.pos.x, Math.max(14, Math.min(60, m.pos.y + vy * dt)), m.pos.z); if (!boxHit(_bp, m.w, m.h)) m.pos.y = _bp.y;
+    m.g.position.copy(m.pos); m.g.rotation.y = m.ang; animMob(m, true, dt);
+    const em = m.flash > 0 ? 0xaa0000 : 0; m.mats.forEach(x => x.emissive.setHex(em));
+}
 function updateMobs(dt) {
-    updateTime(dt); tickWorld(dt);
+    updateTime(dt); tickWorld(dt); witherTick(dt); updateProjectiles(dt);
     if (isClient) { clientMobs(dt); return; }
     bossTick(); spawnT -= dt;
     if (spawnT <= 0) { spawnT = 3; trySpawn(); }
@@ -2575,6 +2733,9 @@ function updateMobs(dt) {
             if(m.hp<=0){ sfxAt('mob', m.type + ':death', m.pos.x, m.pos.y + .5, m.pos.z);
                 const loot={pig:[ITEM.PORK,3],chicken:[ITEM.CHICKEN,2],cow:[ITEM.BEEF,3],sheep:[ITEM.MUTTON,3],rabbit:[ITEM.RABBIT,2],pigman:[ITEM.FLINT,2]}[m.type];
                 if(loot) spawnDrop(loot[0],1+Math.floor(Math.random()*loot[1]),m.pos.x,m.pos.y+.5,m.pos.z);
+                if (m.type === 'skeleton' || m.type === 'witherskel') { if (Math.random() < .7) spawnDrop(ITEM.BONE, 1 + Math.floor(Math.random() * 2), m.pos.x, m.pos.y + .5, m.pos.z); if (m.type === 'skeleton') { if (Math.random() < .6) spawnDrop(ITEM.ARROW, 1 + Math.floor(Math.random() * 3), m.pos.x, m.pos.y + .5, m.pos.z); if (Math.random() < .08) spawnDrop(ITEM.BOW, 1, m.pos.x, m.pos.y + .5, m.pos.z); } else if (Math.random() < .5) spawnDrop(ITEM.COAL, 1, m.pos.x, m.pos.y + .5, m.pos.z); }
+                if (m.type === 'blaze' && Math.random() < .7) spawnDrop(ITEM.BLAZEROD, 1, m.pos.x, m.pos.y + .5, m.pos.z);
+                if (m.type === 'pigman' && Math.random() < .3) spawnDrop(ITEM.GOLD, 1, m.pos.x, m.pos.y + .5, m.pos.z);
                 if (m.type === 'enderman' && Math.random() < .75) spawnDrop(ITEM.PEARL, 1, m.pos.x, m.pos.y + .5, m.pos.z);
                 if (m.type === 'dragon') { dragonDefeated = true; toast('終界龍被擊敗了！'); spawnDrop(ITEM.EMERALD, 8, END_X0 + .5, 44, .5); spawnDrop(ITEM.DIAMOND, 4, END_X0 + .5, 44, .5); }
             }
@@ -2583,12 +2744,15 @@ function updateMobs(dt) {
         if (!chunkLoaded(m.pos.x, m.pos.z)) continue;
         if (m.type === 'dragon') { updateDragon(m, dt, tp, tid); continue; }
         if (m.type === 'enderman') enderBrain(m, dt, dist, tp);
+        if (m.type === 'blaze') { updateBlaze(m, dt, tp, tid, dist); continue; }
+        if (m.trade) { m.trade -= dt; if (m.trade <= 0) { m.trade = 0; piglinBarter(m); } }
         if (isL(getBlockGlobal(Math.floor(m.pos.x), Math.floor(m.pos.y + .3), Math.floor(m.pos.z)))) { m.hp -= 4 * dt; m.flash = .2; m.vy = Math.max(m.vy, 1); }
         m.t -= dt; m.cd -= dt; m.flash -= dt;
         let speed = 0;
-        if ((m.type === 'zombie' && dist < 16) || (m.type === 'wolf' && m.angry && dist < 20) || (m.type === 'pigman' && m.angry && dist < 24) || (m.type === 'enderman' && m.angry && dist < 40)) {
-            m.ang = Math.atan2(dx, dz); speed = m.type === 'enderman' ? 4.2 : m.type === 'zombie' ? 2.3 : m.type === 'pigman' ? 2.8 : 3.2;
-            if (dist < (m.type === 'enderman' ? 1.6 : 1.1) && Math.abs(tp.y - m.pos.y) < 1.5 && m.cd <= 0) { m.cd = 1.2; hurtPlayer(tid, m.type === 'enderman' ? 7 : m.type === 'pigman' ? 3 : 2, m.pos.x, m.pos.z); }
+        if (m.type === 'skeleton' && dist < 26) { m.ang = Math.atan2(dx, dz); speed = dist > 10 ? 2.2 : dist < 5 ? -2.2 : 0; if (m.cd <= 0 && dist < 22) { m.cd = 2 + Math.random(); shootArrowAt(m, tp); } }
+        else if (((m.type === 'zombie' || m.type === 'witherskel') && dist < 16) || (m.type === 'piglin' && dist < 16 && !m.trade && !(tp === player.pos && slots[currentSlot]?.id === ITEM.GOLD)) || (m.type === 'wolf' && m.angry && dist < 20) || (m.type === 'pigman' && m.angry && dist < 24) || (m.type === 'enderman' && m.angry && dist < 40)) {
+            m.ang = Math.atan2(dx, dz); speed = m.type === 'enderman' ? 4.2 : m.type === 'witherskel' ? 2.7 : m.type === 'piglin' ? 3 : m.type === 'zombie' ? 2.3 : m.type === 'pigman' ? 2.8 : 3.2;
+            if (dist < (m.type === 'enderman' ? 1.6 : 1.1) && Math.abs(tp.y - m.pos.y) < 1.5 && m.cd <= 0) { m.cd = 1.2; hurtPlayer(tid, m.type === 'enderman' ? 7 : m.type === 'witherskel' ? 5 : m.type === 'piglin' ? 4 : m.type === 'pigman' ? 3 : 2, m.pos.x, m.pos.z); if (m.type === 'witherskel' && tid === null) witherT = 6; }
         } else {
             if (m.t <= 0) { m.t = 2 + Math.random() * 3; m.walking = Math.random() < 0.6; m.ang = Math.random() * 6.283; if (m.home && Math.hypot(m.home.x-m.pos.x,m.home.z-m.pos.z)>12) m.ang = Math.atan2(m.home.x-m.pos.x,m.home.z-m.pos.z); }
             if (m.home) {
@@ -2599,7 +2763,7 @@ function updateMobs(dt) {
             if (m.walking) speed = m.type === 'pig' ? 1.1 : m.type === 'rabbit' ? 1.6 : m.type === 'horse' ? 1.4 : 0.8;
         }
         if (m.type === 'rabbit' && speed > 0 && m.onGround && Math.random() < .08 * Math.min(dt * 60, 1)) m.vy = 5;
-        if (m.type === 'zombie' && !isNight) {
+        if ((m.type === 'zombie' || m.type === 'skeleton') && !isNight) {
             let sky = true; for (let yy = Math.floor(m.pos.y) + 2; yy < Math.floor(m.pos.y) + 12; yy++) { const b = getBlockGlobal(Math.floor(m.pos.x), yy, Math.floor(m.pos.z)); if (b !== BLOCK.AIR && b !== BLOCK.LEAVES) { sky = false; break; } }
             if (sky) { m.burn = (m.burn || 0) + dt; if (m.burn > 1) { m.burn = 0; m.hp -= 2; m.flash = .3; } }
         }
@@ -2742,7 +2906,9 @@ window.addEventListener('mousedown', (e) => {
     if (e.button === 0) { if (attackMob()) return; mouseDown = true; return; }
     if (e.button === 2) {
         const vm = findMob(); if (vm && vm.type === 'villager') { openTrade(vm); return; }
+        if (vm && vm.type === 'piglin' && tradePiglin(vm)) return;
         const st = slots[currentSlot];
+        if (st && st.id === ITEM.BOW) { bowDrawing = true; bowT = 0; return; }
         if (st && st.id >= 135 && st.id <= 137) { useBucket(st); return; }
         if (st && st.id === ITEM.FLINTSTEEL) { useFlintSteel(); return; }
         if (st && FOOD[st.id]) { if(eatSelected()) { if(hp<20){hp=Math.min(20,hp+2);drawHearts();} } return; }
@@ -2772,8 +2938,8 @@ window.addEventListener('mousedown', (e) => {
 window.addEventListener('contextmenu', e => e.preventDefault());
 let rmb = false; const blocking = () => !!armor.off && rmb;
 window.addEventListener('mousedown', e => { if (e.button === 2 && document.pointerLockElement) rmb = true; });
-window.addEventListener('mouseup', e => { if (e.button === 0) mouseDown = false; if (e.button === 2) rmb = false; });
-document.addEventListener('pointerlockchange', () => { rmb = false; });
+window.addEventListener('mouseup', e => { if (e.button === 0) mouseDown = false; if (e.button === 2) { rmb = false; if (bowDrawing) fireBow(); } });
+document.addEventListener('pointerlockchange', () => { rmb = false; bowDrawing = false; });
 document.addEventListener('pointerlockchange', () => {
     if (!document.pointerLockElement) { mouseDown = false; if (!invOpen && !tableOpen && !chatOpen) document.getElementById('ui-layer').classList.remove('hidden'); }
 });
@@ -2874,9 +3040,11 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => { if (chatOpen) e.stopImmediatePropagation(); }, true);
 
 // ---- 房主 → 訪客：生物與掉落物快照 ----
+let hadProjs = false;
 function sendSnapshots() {
     const r2 = v => Math.round(v * 100) / 100;
     netSend({ t: 'ms', tod: Math.round(tod * 10000) / 10000, m: mobs.map(m => [m.nid, m.type, r2(m.pos.x), r2(m.pos.y), r2(m.pos.z), r2(m.ang), m.flash > 0 ? 1 : 0, m.prof === undefined ? 0 : m.prof]) });
+    if (projs.length || hadProjs) { hadProjs = projs.length > 0; const r4 = v => Math.round(v * 10000) / 10000; netSend({ t: 'ps', p: projs.map(q => { const v = q.stuck > 0 ? q.sd : q.v; return [q.id, q.kind === 'fire' ? 1 : 0, r2(q.p.x), r2(q.p.y), r2(q.p.z), r4(v.x), r4(v.y), r4(v.z), q.by || '']; }) }); }   // 箭矢與火球讓所有人都看得到
     netSend({ t: 'ds', d: drops.map(d => [d.nid, d.id, d.n, r2(d.pos.x), r2(d.pos.y), r2(d.pos.z), d.delay <= 0 ? 1 : 0]) });
 }
 
@@ -2955,9 +3123,14 @@ function onMsg(m, conn) {
     }
     else if (m.t === 'ch') { chestData.set(m.k, m.a); if (isHost) netSend(m, conn); }
     else if (isClient && m.t === 'ms') applyMobSnap(m);
+    else if (isClient && m.t === 'ps') applyProjSnap(m);
     else if (isClient && m.t === 'ds') applyDropSnap(m.d);
     else if (isClient && m.t === 'got') { const left = addItem(m.id, m.n); if (left > 0) throwItem(m.id, left); }
     else if (isClient && m.t === 'hurt') hurt(+m.n || 0, m.fx, m.fz);
+    else if (isHost && m.t === 'pa') {
+        const v = [m.x, m.y, m.z, m.vx, m.vy, m.vz]; if (!v.every(Number.isFinite) || Math.hypot(m.vx, m.vy, m.vz) > 80 || projs.length > 120) return;
+        spawnProj('arrow', 'remote', m.x, m.y, m.z, m.vx, m.vy, m.vz, 0); projs[projs.length - 1].by = conn && conn.peer;
+    }
     else if (isHost && m.t === 'sd') {
         if ([m.x, m.y, m.z].every(Number.isFinite) && Number.isFinite(m.id)) spawnDrop(m.id, Math.min(64, Math.max(1, m.n | 0)), m.x, m.y, m.z, +m.vx || 0, +m.vy || 0, +m.vz || 0);
     }
